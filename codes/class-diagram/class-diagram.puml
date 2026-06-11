@@ -1,0 +1,289 @@
+@startuml
+
+skinparam classAttributeIconSize 0
+
+package "Gerenciamento de Usuários" {
+    abstract class Usuario {
+        - nome: String
+        - telefone: String
+        - email: String
+        - senha: String
+        - foto: String
+        - status: StatusUsuario
+
+        + login()
+        + logout()
+        + recuperarSenha()
+        + excluirConta()
+    }
+
+    class Participante {
+        - cpf: String
+        - dataNascimento: Date
+        - sexo: Sexo
+
+        + cadastrar()
+        + editar()
+        + visualizarInformacoes()
+    }
+
+    class Organizador {
+        - biografia: String
+        - site: String
+
+        + cadastrar()
+        + editar()
+        + visualizarInformacoes()
+    }
+
+    class Administrador {
+        - matricula: String
+        - cargo: String
+        - nivelAcesso: int
+
+        + editar()
+        + gerenciarAcesso()
+    }
+
+    enum StatusUsuario {
+        PENDENTE
+        ATIVO
+        INATIVO
+        BLOQUEADO
+    }
+
+    enum Sexo {
+        MASCULINO
+        FEMININO
+        OUTRO
+    }
+}
+
+package "Gerenciamento de Eventos" {
+    class Evento {
+        - titulo: String
+        - descricao: String
+        - dataInicio: LocalDateTime
+        - dataFim: LocalDateTime
+        - limiteParticipantes: int
+        - imagem: String
+        - status: StatusEvento
+
+        + cadastrar()
+        + editar()
+        + cancelar()
+        + visualizarInformacoes()
+        + visualizarMetricas()
+        + verificarLimite()
+    }
+
+    class Local {
+        - nome: String
+        - descricao: String
+        - capacidadeMaxima: int
+        - cnpj: String
+        - email: String
+        - telefone: String
+        - cep: String
+        - endereco: String
+
+        + cadastrar()
+        + editar()
+        + excluir()
+        + visualizarInformacoes()
+        + possuiCapacidadeDisponivel()
+        + validarDisponibilidade()
+    }
+
+    class Categoria {
+        - nome: String
+        - descricao: String
+
+        + cadastrar()
+        + editar()
+        + excluir()
+        + visualizarInformacoes()
+        + verificarNome()
+    }
+
+    class Inscricao {
+        - data: LocalDateTime
+        - status: StatusInscricao
+
+        + inscrever()
+        + confirmar()
+        + cancelar()
+        + visualizarInformacoes()
+        + verificarElegibilidade()
+    }
+
+    class Ingresso {
+        - codigo: String
+        - dataEmissao: LocalDateTime
+        - status: StatusIngresso
+
+        + gerar()
+        + validar()
+        + cancelar()
+        + visualizarInformacoes()
+    }
+
+    class Avaliacao {
+        - nota: int
+        - comentario: String
+        - data: LocalDateTime
+
+        + avaliar()
+        + editar()
+        + excluir()
+        + visualizarInformacoes()
+        + validarNota()
+    }
+
+    class Favorito {
+        - dataFavoritacao: LocalDateTime
+
+        + favoritar()
+        + desfavoritar()
+        + visualizarInformacoes()
+    }
+
+    enum StatusEvento {
+        RASCUNHO
+        PUBLICADO
+        CANCELADO
+        ENCERRADO
+    }
+
+    enum StatusInscricao {
+        PENDENTE
+        CONFIRMADA
+        CANCELADA
+        REEMBOLSADA
+    }
+
+    enum StatusIngresso {
+        VALIDO
+        UTILIZADO
+        CANCELADO
+    }
+}
+
+package "Financeiro" {
+    class Pagamento {
+        - valor: double
+        - dataPagamento: LocalDateTime
+        - metodo: MetodoPagamento
+        - status: StatusPagamento
+        - comprovante: String
+
+        + realizar()
+        + confirmar()
+        + cancelar()
+        + visualizarInformacoes()
+    }
+
+    class Reembolso {
+        - valor: double
+        - motivo: String
+        - dataSolicitacao: LocalDateTime
+        - dataProcessamento: LocalDateTime
+        - status: StatusReembolso
+
+        + solicitar()
+        + aprovar()
+        + rejeitar()
+        + visualizarInformacoes()
+    }
+
+    enum MetodoPagamento {
+        PIX
+        CARTAO_CREDITO
+        CARTAO_DEBITO
+        BOLETO
+    }
+
+    enum StatusPagamento {
+        PENDENTE
+        APROVADO
+        CANCELADO
+    }
+
+    enum StatusReembolso {
+        PENDENTE
+        APROVADO
+        REJEITADO
+    }
+}
+
+package "Comunicação" {
+    abstract class Mensagem {
+        - conteudo: String
+        - dataEnvio: LocalDateTime
+
+        + enviar()
+        + visualizarInformacoes()
+    }
+
+    class Duvida {
+        - resposta: String
+        - dataResposta: LocalDateTime
+        - status: StatusDuvida
+
+        + responder()
+        + encerrar()
+    }
+
+    class Feedback {
+        - status: StatusFeedback
+
+        + arquivar()
+    }
+
+    enum StatusDuvida {
+        PENDENTE
+        RESPONDIDA
+        ENCERRADA
+    }
+
+    enum StatusFeedback {
+        NOVO
+        VISUALIZADO
+        ARQUIVADO
+    }
+}
+
+Usuario <|-- Participante
+Usuario <|-- Organizador
+Usuario <|-- Administrador
+
+Mensagem <|-- Duvida
+Mensagem <|-- Feedback
+
+Participante "1" -- "0..*" Inscricao
+Participante "1" -- "0..*" Duvida
+Participante "1" -- "0..*" Feedback
+Participante "1" -- "0..*" Avaliacao
+Participante "1" -- "0..*" Favorito
+
+Organizador "1" -- "0..*" Evento
+Organizador "1" -- "0..*" Local
+Organizador "1" -- "0..*" Duvida
+
+Administrador "1" -- "0..*" Feedback
+
+Evento "1" -- "0..*" Inscricao
+Evento "1" -- "0..*" Avaliacao
+Evento "1" -- "0..*" Favorito
+Evento "1" -- "0..*" Duvida
+
+Local "1" -- "0..*" Evento
+
+Inscricao "1" -- "1" Ingresso
+Inscricao "1" -- "1" Pagamento
+
+Categoria "1" -- "0..*" Evento
+
+Pagamento "1" -- "0..1" Reembolso
+
+@enduml
