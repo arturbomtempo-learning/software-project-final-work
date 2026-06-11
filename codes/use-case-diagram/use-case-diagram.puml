@@ -16,37 +16,40 @@ rectangle "Sistema de Gerenciamento de Eventos" {
     usecase "UC01: Realizar login" as UC_Login
     usecase "UC02: Recuperar senha" as UC_ResetPassword
     usecase "UC03: Pesquisar eventos disponíveis" as UC_SearchEvents
+    usecase "UC04: Pesquisar locais de entretenimento" as UC_SearchLocations
 
-    usecase "UC04: Gerenciar conta de participante" as UC_ManageParticipant
-    usecase "UC05: Gerenciar inscrição no evento" as UC_ManageReservation
-    usecase "UC06: Realizar pagamento do ingresso" as UC_MakePayment
-    usecase "UC07: Solicitar reembolso do ingresso" as UC_RequestRefund
-    usecase "UC08: Visualizar ingresso" as UC_ViewTicket
-    usecase "UC09: Enviar dúvida para o organizador do evento" as UC_SubmitQuestion
-    usecase "UC10: Fornecer feedback sobre a plataforma" as UC_SubmitFeedback
-    usecase "UC11: Avaliar evento participado" as UC_RateEvent
-    usecase "UC12: Favoritar eventos" as UC_BookmarkEvent
+    usecase "UC05: Gerenciar conta de participante" as UC_ManageParticipant
+    usecase "UC06: Gerenciar inscrição no evento" as UC_ManageReservation
+    usecase "UC07: Realizar pagamento do ingresso" as UC_MakePayment
+    usecase "UC08: Solicitar reembolso do ingresso" as UC_RequestRefund
+    usecase "UC09: Visualizar ingresso" as UC_ViewTicket
+    usecase "UC10: Enviar dúvida para o organizador do evento" as UC_SubmitQuestion
+    usecase "UC11: Fornecer feedback sobre a plataforma" as UC_SubmitFeedback
+    usecase "UC12: Avaliar evento participado" as UC_RateEvent
+    usecase "UC13: Favoritar eventos" as UC_BookmarkEvent
 
-    usecase "UC13: Gerenciar conta de organizador" as UC_ManageOrganizer
-    usecase "UC14: Gerenciar eventos" as UC_ManageEvents
-    usecase "UC15: Visualizar participantes do evento" as UC_ViewParticipants
-    usecase "UC16: Visualizar métricas dos eventos" as UC_ViewMetrics
-    usecase "UC17: Gerenciar solicitações de reembolso" as UC_ManageRefund
-    usecase "UC18: Responder dúvidas enviadas pelos participantes" as UC_AnswerQuestions
-    usecase "UC19: Consultar comprovantes de pagamento" as UC_SearchReceipts
-    usecase "UC20: Visualizar avaliações dos eventos" as UC_ViewReviews
-    usecase "UC21: Validar ingresso" as UC_ValidateTicket
+    usecase "UC14: Gerenciar conta de organizador" as UC_ManageOrganizer
+    usecase "UC15: Gerenciar eventos" as UC_ManageEvents
+    usecase "UC16: Gerenciar locais de entretenimento" as UC_ManageLocation
+    usecase "UC17: Visualizar participantes do evento" as UC_ViewParticipants
+    usecase "UC18: Visualizar métricas dos eventos" as UC_ViewMetrics
+    usecase "UC19: Gerenciar solicitações de reembolso" as UC_ManageRefund
+    usecase "UC20: Responder dúvidas enviadas pelos participantes" as UC_AnswerQuestions
+    usecase "UC21: Consultar comprovantes de pagamento" as UC_SearchReceipts
+    usecase "UC22: Visualizar avaliações dos eventos" as UC_ViewReviews
+    usecase "UC23: Validar ingresso" as UC_ValidateTicket
 
-    usecase "UC22: Gerenciar categorias de eventos" as UC_ManageCategories
-    usecase "UC23: Gerenciar acesso de organizadores" as UC_ManageAccess
-    usecase "UC24: Moderar eventos" as UC_ModerateEvents
-    usecase "UC25: Visualizar feedbacks sobre a plataforma" as UC_ViewFeedbacks
+    usecase "UC24: Gerenciar categorias de eventos" as UC_ManageCategories
+    usecase "UC25: Gerenciar acesso de organizadores" as UC_ManageAccess
+    usecase "UC26: Moderar eventos" as UC_ModerateEvents
+    usecase "UC27: Visualizar feedbacks sobre a plataforma" as UC_ViewFeedbacks
 
-    usecase "UC26: Confirmar ação" as UC_ConfirmAction
+    usecase "UC28: Confirmar ação" as UC_ConfirmAction
 }
 
 User --> UC_Login
 User --> UC_SearchEvents
+User --> UC_SearchLocations
 
 Part --> UC_ManageParticipant
 Part --> UC_ManageReservation
@@ -69,6 +72,7 @@ Part --> UC_BookmarkEvent
 
 Org --> UC_ManageOrganizer
 Org --> UC_ManageEvents
+Org --> UC_ManageLocation
 Org --> UC_ViewParticipants
 Org --> UC_ViewMetrics
 
