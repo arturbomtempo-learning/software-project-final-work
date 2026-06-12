@@ -1,0 +1,200 @@
+@startuml logical-model
+
+title Modelo Lógico — Sistema de Gerenciamento de Eventos
+
+hide circle
+skinparam linetype ortho
+skinparam nodesep 40
+skinparam ranksep 70
+
+skinparam entity {
+    BackgroundColor #FAFAFA
+    BorderColor #455A64
+    FontSize 11
+    AttributeFontSize 10
+}
+
+skinparam package {
+    BorderColor #546E7A
+    FontStyle bold
+    FontSize 12
+}
+
+package "DB_USUARIOS" #E8EAF6 {
+
+    entity "Usuario" as usuario {
+        * id_usuario : BIGINT <<PK>>
+        nome : VARCHAR(100) <<NN>>
+        telefone : VARCHAR(20)
+        email : VARCHAR(150) <<UQ, NN>>
+        senha : VARCHAR(255) <<NN>>
+        foto : VARCHAR(255)
+        status : VARCHAR(20) <<NN>>
+        tipo_usuario : VARCHAR(20) <<NN>>
+    }
+
+    entity "Participante" as participante {
+        * id_participante : BIGINT <<PK>>
+        id_usuario : BIGINT <<FK, UQ, NN>>
+        cpf : VARCHAR(14) <<UQ, NN>>
+        data_nascimento : DATE <<NN>>
+        sexo : VARCHAR(20) <<NN>>
+    }
+
+    entity "Organizador" as organizador {
+        * id_organizador : BIGINT <<PK>>
+        id_usuario : BIGINT <<FK, UQ, NN>>
+        biografia : TEXT
+        site : VARCHAR(255)
+    }
+
+    entity "Administrador" as administrador {
+        * id_administrador : BIGINT <<PK>>
+        id_usuario : BIGINT <<FK, UQ, NN>>
+        matricula : VARCHAR(50) <<UQ, NN>>
+        cargo : VARCHAR(100) <<NN>>
+        nivel_acesso : INTEGER <<NN>>
+    }
+}
+
+package "DB_EVENTOS" #E8F5E9 {
+
+    entity "Categoria" as categoria {
+        * id_categoria : BIGINT <<PK>>
+        nome : VARCHAR(100) <<UQ, NN>>
+        descricao : TEXT
+    }
+
+    entity "Local" as local {
+        * id_local : BIGINT <<PK>>
+        id_organizador : BIGINT <<NN>>
+        nome : VARCHAR(150) <<NN>>
+        descricao : TEXT
+        capacidade_maxima : INTEGER <<NN>>
+        cnpj : VARCHAR(18) <<UQ>>
+        email : VARCHAR(150)
+        telefone : VARCHAR(20)
+        cep : VARCHAR(10) <<NN>>
+        endereco : VARCHAR(255) <<NN>>
+    }
+
+    entity "Evento" as evento {
+        * id_evento : BIGINT <<PK>>
+        id_local : BIGINT <<FK, NN>>
+        id_categoria : BIGINT <<FK, NN>>
+        id_organizador : BIGINT <<NN>>
+        titulo : VARCHAR(200) <<NN>>
+        descricao : TEXT
+        data_inicio : TIMESTAMP <<NN>>
+        data_fim : TIMESTAMP <<NN>>
+        limite_participantes : INTEGER <<NN>>
+        imagem : VARCHAR(255)
+        status : VARCHAR(20) <<NN>>
+    }
+
+    entity "Inscricao" as inscricao {
+        * id_inscricao : BIGINT <<PK>>
+        id_evento : BIGINT <<FK, NN>>
+        id_participante : BIGINT <<NN>>
+        data : TIMESTAMP <<NN>>
+        status : VARCHAR(20) <<NN>>
+    }
+
+    entity "Ingresso" as ingresso {
+        * id_ingresso : BIGINT <<PK>>
+        id_inscricao : BIGINT <<FK, UQ, NN>>
+        codigo : VARCHAR(50) <<UQ, NN>>
+        data_emissao : TIMESTAMP <<NN>>
+        status : VARCHAR(20) <<NN>>
+    }
+
+    entity "Avaliacao" as avaliacao {
+        * id_avaliacao : BIGINT <<PK>>
+        id_evento : BIGINT <<FK, NN>>
+        id_participante : BIGINT <<NN>>
+        nota : INTEGER <<NN>>
+        comentario : TEXT
+        data : TIMESTAMP <<NN>>
+    }
+
+    entity "Favorito" as favorito {
+        * id_favorito : BIGINT <<PK>>
+        id_evento : BIGINT <<FK, NN>>
+        id_participante : BIGINT <<NN>>
+        data_favoritacao : TIMESTAMP <<NN>>
+    }
+}
+
+package "DB_FINANCEIRO" #FFF8E1 {
+
+    entity "Pagamento" as pagamento {
+        * id_pagamento : BIGINT <<PK>>
+        id_inscricao : BIGINT <<UQ, NN>>
+        valor : DECIMAL(10,2) <<NN>>
+        data_pagamento : TIMESTAMP
+        metodo : VARCHAR(20) <<NN>>
+        status : VARCHAR(20) <<NN>>
+        comprovante : VARCHAR(255)
+    }
+
+    entity "Reembolso" as reembolso {
+        * id_reembolso : BIGINT <<PK>>
+        id_pagamento : BIGINT <<FK, UQ, NN>>
+        valor : DECIMAL(10,2) <<NN>>
+        motivo : TEXT <<NN>>
+        data_solicitacao : TIMESTAMP <<NN>>
+        data_processamento : TIMESTAMP
+        status : VARCHAR(20) <<NN>>
+    }
+}
+
+package "DB_COMUNICACAO" #FCE4EC {
+
+    entity "Duvida" as duvida {
+        * id_duvida : BIGINT <<PK>>
+        id_participante : BIGINT <<NN>>
+        id_organizador : BIGINT
+        id_evento : BIGINT <<NN>>
+        conteudo : TEXT <<NN>>
+        data_envio : TIMESTAMP <<NN>>
+        resposta : TEXT
+        data_resposta : TIMESTAMP
+        status : VARCHAR(20) <<NN>>
+    }
+
+    entity "Feedback" as feedback {
+        * id_feedback : BIGINT <<PK>>
+        id_participante : BIGINT <<NN>>
+        id_administrador : BIGINT
+        conteudo : TEXT <<NN>>
+        data_envio : TIMESTAMP <<NN>>
+        status : VARCHAR(20) <<NN>>
+    }
+}
+
+usuario ||--o| participante
+usuario ||--o| organizador
+usuario ||--o| administrador
+
+categoria ||--o{ evento
+local     ||--o{ evento
+evento    ||--o{ inscricao
+inscricao ||--|| ingresso
+evento    ||--o{ avaliacao
+evento    ||--o{ favorito
+
+pagamento ||--o| reembolso
+
+organizador   ||..o{ local
+organizador   ||..o{ evento
+participante  ||..o{ inscricao
+participante  ||..o{ avaliacao
+participante  ||..o{ favorito
+inscricao     ||..|| pagamento
+participante  ||..o{ duvida
+organizador   |o..o{ duvida
+evento        ||..o{ duvida
+participante  ||..o{ feedback
+administrador |o..o{ feedback
+
+@enduml
