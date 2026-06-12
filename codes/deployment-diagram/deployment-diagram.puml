@@ -1,6 +1,6 @@
-@startuml component-diagram
+@startuml implantation-diagram
 
-title Diagrama de Componentes - Sistema de Gerenciamento de Eventos
+title Diagrama de Implantação - Sistema de Gerenciamento de Eventos
 
 skinparam nodesep 30
 skinparam ranksep 80
@@ -35,65 +35,84 @@ node "Cliente" {
     [Navegador Web] as WEB
 }
 
-[Frontend\n<<Next.js>>] as FRONT
+rectangle "Vercel" as VERCEL #F9FBE7 {
+    [Frontend\n<<Next.js>>] as FRONT
+}
 
 WEB --> FRONT : HTTPS
 
-[API Gateway\n<<Amazon AWS>>] as APIGW
+rectangle "AWS — API Gateway" as AWSGW #E0F7FA {
+    [API Gateway\n<<Amazon>>] as APIGW
+}
 
 FRONT --> APIGW : HTTPS
 
-[Load Balancer\n<<ALB>>] as ALB
+rectangle "AWS — Application Load Balancer" as AWSALB #F3E5F5 {
+    [Load Balancer\n<<ALB>>] as ALB
+}
 
 APIGW --> ALB : HTTPS
 
-interface "REST" as iUSER
-interface "REST" as iEVENTS
-interface "REST" as iFIN
-interface "REST" as iCOMM
+rectangle "AWS ECS Cluster" as ECS #E3F2FD {
 
-ALB --( iUSER
-ALB --( iEVENTS
-ALB --( iFIN
-ALB --( iCOMM
+    interface "REST" as iUSER
+    interface "REST" as iEVENTS
+    interface "REST" as iFIN
+    interface "REST" as iCOMM
 
-[Usuarios Service\n<<Spring Boot>>]    as USERS
-[Eventos Service\n<<Spring Boot>>]     as EVENTS
-[Financeiro Service\n<<Spring Boot>>]  as FIN
-[Comunicacao Service\n<<Spring Boot>>] as COMM
+    ALB --( iUSER
+    ALB --( iEVENTS
+    ALB --( iFIN
+    ALB --( iCOMM
 
-USERS  -up- iUSER
-EVENTS -up- iEVENTS
-FIN    -up- iFIN
-COMM   -up- iCOMM
+    [Usuarios Service\n<<Spring Boot>>]    as USERS
+    [Eventos Service\n<<Spring Boot>>]     as EVENTS
+    [Financeiro Service\n<<Spring Boot>>]  as FIN
+    [Comunicacao Service\n<<Spring Boot>>] as COMM
 
-EVENTS --( iUSER   : REST
-FIN    --( iUSER   : REST
-COMM   --( iUSER   : REST
-FIN    --( iEVENTS : REST
-COMM   --( iEVENTS : REST
+    USERS  -up- iUSER
+    EVENTS -up- iEVENTS
+    FIN    -up- iFIN
+    COMM   -up- iCOMM
 
-interface "TCP/IP" as iDB1
-interface "TCP/IP" as iDB2
-interface "TCP/IP" as iDB3
-interface "TCP/IP" as iDB4
+    EVENTS --( iUSER   : REST
+    FIN    --( iUSER   : REST
+    COMM   --( iUSER   : REST
+    FIN    --( iEVENTS : REST
+    COMM   --( iEVENTS : REST
 
-USERS  --( iDB1
-EVENTS --( iDB2
-FIN    --( iDB3
-COMM   --( iDB4
+    interface "TCP/IP" as iDB1
+    interface "TCP/IP" as iDB2
+    interface "TCP/IP" as iDB3
+    interface "TCP/IP" as iDB4
 
-database "PostgreSQL\nUsuários"    as DB1
-database "PostgreSQL\nEventos"     as DB2
-database "PostgreSQL\nFinanceiro"  as DB3
-database "PostgreSQL\nComunicação" as DB4
+    USERS  --( iDB1
+    EVENTS --( iDB2
+    FIN    --( iDB3
+    COMM   --( iDB4
+
+    USERS  -[hidden]right- EVENTS
+    EVENTS -[hidden]right- FIN
+    FIN    -[hidden]right- COMM
+}
+
+rectangle "AWS RDS" as RDS #EDE7F6 {
+    database "PostgreSQL\nUsuários"    as DB1
+    database "PostgreSQL\nEventos"     as DB2
+    database "PostgreSQL\nFinanceiro"  as DB3
+    database "PostgreSQL\nComunicação" as DB4
+
+    DB1 -[hidden]right- DB2
+    DB2 -[hidden]right- DB3
+    DB3 -[hidden]right- DB4
+}
 
 iDB1 -down- DB1
 iDB2 -down- DB2
 iDB3 -down- DB3
 iDB4 -down- DB4
 
-rectangle "Mensageria — RabbitMQ (AWS EC2)" as MQ #FFF8E1 {
+rectangle "AWS EC2 — Mensageria" as EC2 #FFF8E1 {
     [RabbitMQ Broker] as RABBIT
     queue "Fila de\nPagamentos"   as Q_PAY
     queue "Fila de\nConfirmações" as Q_CONF
@@ -107,7 +126,7 @@ Q_CONF --> EVENTS  : AMQP
 EVENTS --> Q_NOTIF : AMQP
 Q_NOTIF --> COMM   : AMQP
 
-rectangle "Serviços Externos" as EXT #FCE4EC {
+rectangle "Stripe (Serviço Externo)" as EXT #FCE4EC {
     [Stripe API] as STRIPE
 }
 
@@ -116,15 +135,17 @@ interface "HTTPS" as iSTRIPE
 STRIPE  -left- iSTRIPE
 FIN    --( iSTRIPE : HTTPS
 
-USERS  -[hidden]right- EVENTS
-EVENTS -[hidden]right- FIN
-FIN    -[hidden]right- COMM
+rectangle "AWS CloudWatch" as CW #ECEFF1 {
+    [Logs e Monitoramento] as CLOUDWATCH
+}
 
-DB1 -[hidden]right- DB2
-DB2 -[hidden]right- DB3
-DB3 -[hidden]right- DB4
+USERS  ..> CLOUDWATCH : logs
+EVENTS ..> CLOUDWATCH : logs
+FIN    ..> CLOUDWATCH : logs
+COMM   ..> CLOUDWATCH : logs
 
-COMM -[hidden]right- MQ
-MQ   -[hidden]down-  EXT
+ECS  -[hidden]down-  RDS
+COMM -[hidden]right- EC2
+EC2  -[hidden]down-  EXT
 
 @enduml

@@ -1,0 +1,130 @@
+@startuml component-diagram
+
+title Diagrama de Componentes - Sistema de Gerenciamento de Eventos
+
+skinparam nodesep 30
+skinparam ranksep 80
+
+skinparam component {
+  BackgroundColor #E8F5E9
+  BorderColor #1B5E20
+  FontStyle bold
+}
+
+skinparam database {
+  BackgroundColor #E8EAF6
+  BorderColor #283593
+}
+
+skinparam interface {
+  BackgroundColor #FFFFFF
+  BorderColor #BF360C
+}
+
+skinparam queue {
+  BackgroundColor #FFF8E1
+  BorderColor #F57F17
+}
+
+skinparam rectangle {
+  BorderColor #546E7A
+  FontColor #37474F
+}
+
+node "Cliente" {
+    [Navegador Web] as WEB
+}
+
+[Frontend\n<<Next.js>>] as FRONT
+
+WEB --> FRONT : HTTPS
+
+[API Gateway\n<<Amazon AWS>>] as APIGW
+
+FRONT --> APIGW : HTTPS
+
+[Load Balancer\n<<ALB>>] as ALB
+
+APIGW --> ALB : HTTPS
+
+interface "REST" as iUSER
+interface "REST" as iEVENTS
+interface "REST" as iFIN
+interface "REST" as iCOMM
+
+ALB --( iUSER
+ALB --( iEVENTS
+ALB --( iFIN
+ALB --( iCOMM
+
+[Usuarios Service\n<<Spring Boot>>]    as USERS
+[Eventos Service\n<<Spring Boot>>]     as EVENTS
+[Financeiro Service\n<<Spring Boot>>]  as FIN
+[Comunicacao Service\n<<Spring Boot>>] as COMM
+
+USERS  -up- iUSER
+EVENTS -up- iEVENTS
+FIN    -up- iFIN
+COMM   -up- iCOMM
+
+EVENTS --( iUSER   : REST
+FIN    --( iUSER   : REST
+COMM   --( iUSER   : REST
+FIN    --( iEVENTS : REST
+COMM   --( iEVENTS : REST
+
+interface "TCP/IP" as iDB1
+interface "TCP/IP" as iDB2
+interface "TCP/IP" as iDB3
+interface "TCP/IP" as iDB4
+
+USERS  --( iDB1
+EVENTS --( iDB2
+FIN    --( iDB3
+COMM   --( iDB4
+
+database "PostgreSQL\nUsuários"    as DB1
+database "PostgreSQL\nEventos"     as DB2
+database "PostgreSQL\nFinanceiro"  as DB3
+database "PostgreSQL\nComunicação" as DB4
+
+iDB1 -down- DB1
+iDB2 -down- DB2
+iDB3 -down- DB3
+iDB4 -down- DB4
+
+rectangle "Mensageria — RabbitMQ (AWS EC2)" as MQ #FFF8E1 {
+    [RabbitMQ Broker] as RABBIT
+    queue "Fila de\nPagamentos"   as Q_PAY
+    queue "Fila de\nConfirmações" as Q_CONF
+    queue "Fila de\nNotificações" as Q_NOTIF
+}
+
+EVENTS --> Q_PAY   : AMQP
+Q_PAY  --> FIN     : AMQP
+FIN    --> Q_CONF  : AMQP
+Q_CONF --> EVENTS  : AMQP
+EVENTS --> Q_NOTIF : AMQP
+Q_NOTIF --> COMM   : AMQP
+
+rectangle "Serviços Externos" as EXT #FCE4EC {
+    [Stripe API] as STRIPE
+}
+
+interface "HTTPS" as iSTRIPE
+
+STRIPE  -left- iSTRIPE
+FIN    --( iSTRIPE : HTTPS
+
+USERS  -[hidden]right- EVENTS
+EVENTS -[hidden]right- FIN
+FIN    -[hidden]right- COMM
+
+DB1 -[hidden]right- DB2
+DB2 -[hidden]right- DB3
+DB3 -[hidden]right- DB4
+
+COMM -[hidden]right- MQ
+MQ   -[hidden]down-  EXT
+
+@enduml
