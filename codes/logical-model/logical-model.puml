@@ -1,6 +1,6 @@
 @startuml logical-model
 
-title Modelo Lógico — Sistema de Gerenciamento de Eventos
+title Modelo Lógico - Sistema de Gerenciamento de Eventos
 
 hide circle
 skinparam linetype ortho
