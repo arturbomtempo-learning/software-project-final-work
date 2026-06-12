@@ -1,158 +1,151 @@
 @startuml implantation-diagram
 
-skinparam shadowing false
-skinparam backgroundColor white
-skinparam defaultFontSize 11
-skinparam nodeStyle default
-
-top to bottom direction
-
 title Diagrama de Implantação - Sistema de Gerenciamento de Eventos
 
-'==========================
-' DISPOSITIVO CLIENTE
-'==========================
+skinparam nodesep 30
+skinparam ranksep 80
 
-node "Dispositivo Cliente" <<device>> as ClientDevice {
-    node "Navegador Web" as Browser
+skinparam component {
+  BackgroundColor #E8F5E9
+  BorderColor #1B5E20
+  FontStyle bold
 }
 
-'==========================
-' VERCEL — SERVIDOR FRONTEND
-'==========================
-
-node "Vercel" <<server>> as VercelServer {
-    node "CDN Global" as CDN {
-        artifact "Next.js Application\n(SSR + Static Assets)" as NextApp
-    }
+skinparam database {
+  BackgroundColor #E8EAF6
+  BorderColor #283593
 }
 
-'==========================
-' AWS — INFRAESTRUTURA DE ENTRADA
-'==========================
-
-node "AWS API Gateway" <<service>> as APIGWNode {
-    artifact "Amazon API Gateway" as APIGateway
+skinparam interface {
+  BackgroundColor #FFFFFF
+  BorderColor #BF360C
 }
 
-node "AWS Application Load Balancer" <<service>> as ALBNode {
-    artifact "Application Load Balancer" as ALBArtifact
+skinparam queue {
+  BackgroundColor #FFF8E1
+  BorderColor #F57F17
 }
 
-'==========================
-' AWS ECS — CONTÊINERES DE MICROSSERVIÇOS
-'==========================
-
-node "AWS ECS Cluster" <<executionEnvironment>> as ECSCluster {
-
-    node "Contêiner — Usuários" <<container>> as ContainerUsers {
-        artifact "Serviço Usuários\n(Spring Boot JAR)" as UserJar
-    }
-
-    node "Contêiner — Eventos" <<container>> as ContainerEvents {
-        artifact "Serviço Eventos\n(Spring Boot JAR)" as EventJar
-    }
-
-    node "Contêiner — Financeiro" <<container>> as ContainerFinancial {
-        artifact "Serviço Financeiro\n(Spring Boot JAR)" as FinancialJar
-    }
-
-    node "Contêiner — Comunicação" <<container>> as ContainerComm {
-        artifact "Serviço Comunicação\n(Spring Boot JAR)" as CommJar
-    }
-
+skinparam rectangle {
+  BorderColor #546E7A
+  FontColor #37474F
 }
 
-'==========================
-' AWS RDS — BANCOS DE DADOS
-'==========================
-
-node "AWS RDS" <<server>> as RDSNode {
-    database "PostgreSQL — Usuários"    as DBUsers
-    database "PostgreSQL — Eventos"     as DBEvents
-    database "PostgreSQL — Financeiro"  as DBFinancial
-    database "PostgreSQL — Comunicação" as DBComm
+node "Cliente" {
+    [Navegador Web] as WEB
 }
 
-'==========================
-' AWS EC2 — MENSAGERIA
-'==========================
-
-node "AWS EC2 — Mensageria" <<server>> as EC2Node {
-    node "Docker — RabbitMQ" <<container>> as DockerRabbitMQ {
-        artifact "RabbitMQ Broker" as RabbitMQ
-    }
+rectangle "Vercel" as VERCEL #F9FBE7 {
+    [Frontend\n<<Next.js>>] as FRONT
 }
 
-'==========================
-' STRIPE — SERVIÇO EXTERNO
-'==========================
+WEB --> FRONT : HTTPS
 
-node "Stripe" <<external>> as StripeNode {
-    artifact "Stripe API" as StripeAPI
+rectangle "AWS — API Gateway" as AWSGW #E0F7FA {
+    [API Gateway\n<<Amazon>>] as APIGW
 }
 
-'==========================
-' AWS CLOUDWATCH — MONITORAMENTO
-'==========================
+FRONT --> APIGW : HTTPS
 
-node "AWS CloudWatch" <<service>> as CloudWatchNode {
-    artifact "Logs e Monitoramento" as CloudWatch
+rectangle "AWS — Application Load Balancer" as AWSALB #F3E5F5 {
+    [Load Balancer\n<<ALB>>] as ALB
 }
 
-'==========================
-' FLUXO PRINCIPAL DE REQUISIÇÕES
-'==========================
+APIGW --> ALB : HTTPS
 
-ClientDevice --> VercelServer : <<HTTPS>>
-VercelServer --> APIGWNode   : <<HTTPS>>
-APIGWNode    --> ALBNode      : <<HTTPS>>
+rectangle "AWS ECS Cluster" as ECS #E3F2FD {
 
-ALBNode --> ContainerUsers    : <<HTTP>>
-ALBNode --> ContainerEvents   : <<HTTP>>
-ALBNode --> ContainerFinancial : <<HTTP>>
-ALBNode --> ContainerComm     : <<HTTP>>
+    interface "REST" as iUSER
+    interface "REST" as iEVENTS
+    interface "REST" as iFIN
+    interface "REST" as iCOMM
 
-'==========================
-' MICROSSERVIÇOS → BANCOS DE DADOS
-'==========================
+    ALB --( iUSER
+    ALB --( iEVENTS
+    ALB --( iFIN
+    ALB --( iCOMM
 
-ContainerUsers    --> DBUsers    : <<TCP/IP>>
-ContainerEvents   --> DBEvents   : <<TCP/IP>>
-ContainerFinancial --> DBFinancial : <<TCP/IP>>
-ContainerComm     --> DBComm     : <<TCP/IP>>
+    [Usuarios Service\n<<Spring Boot>>]    as USERS
+    [Eventos Service\n<<Spring Boot>>]     as EVENTS
+    [Financeiro Service\n<<Spring Boot>>]  as FIN
+    [Comunicacao Service\n<<Spring Boot>>] as COMM
 
-'==========================
-' MICROSSERVIÇOS → MENSAGERIA
-'==========================
+    USERS  -up- iUSER
+    EVENTS -up- iEVENTS
+    FIN    -up- iFIN
+    COMM   -up- iCOMM
 
-ContainerEvents    --> EC2Node : <<AMQP>>
-ContainerFinancial --> EC2Node : <<AMQP>>
-ContainerComm      --> EC2Node : <<AMQP>>
+    EVENTS --( iUSER   : REST
+    FIN    --( iUSER   : REST
+    COMM   --( iUSER   : REST
+    FIN    --( iEVENTS : REST
+    COMM   --( iEVENTS : REST
 
-'==========================
-' COMUNICAÇÃO ENTRE MICROSSERVIÇOS
-'==========================
+    interface "TCP/IP" as iDB1
+    interface "TCP/IP" as iDB2
+    interface "TCP/IP" as iDB3
+    interface "TCP/IP" as iDB4
 
-ContainerEvents    --> ContainerUsers    : <<REST/HTTP>>
-ContainerFinancial --> ContainerUsers    : <<REST/HTTP>>
-ContainerFinancial --> ContainerEvents   : <<REST/HTTP>>
-ContainerComm      --> ContainerUsers    : <<REST/HTTP>>
-ContainerComm      --> ContainerEvents   : <<REST/HTTP>>
+    USERS  --( iDB1
+    EVENTS --( iDB2
+    FIN    --( iDB3
+    COMM   --( iDB4
 
-'==========================
-' FINANCEIRO → STRIPE
-'==========================
+    USERS  -[hidden]right- EVENTS
+    EVENTS -[hidden]right- FIN
+    FIN    -[hidden]right- COMM
+}
 
-ContainerFinancial --> StripeNode : <<HTTPS>>
+rectangle "AWS RDS" as RDS #EDE7F6 {
+    database "PostgreSQL\nUsuários"    as DB1
+    database "PostgreSQL\nEventos"     as DB2
+    database "PostgreSQL\nFinanceiro"  as DB3
+    database "PostgreSQL\nComunicação" as DB4
 
-'==========================
-' MICROSSERVIÇOS → MONITORAMENTO
-'==========================
+    DB1 -[hidden]right- DB2
+    DB2 -[hidden]right- DB3
+    DB3 -[hidden]right- DB4
+}
 
-ContainerUsers     ..> CloudWatchNode : <<logs>>
-ContainerEvents    ..> CloudWatchNode : <<logs>>
-ContainerFinancial ..> CloudWatchNode : <<logs>>
-ContainerComm      ..> CloudWatchNode : <<logs>>
+iDB1 -down- DB1
+iDB2 -down- DB2
+iDB3 -down- DB3
+iDB4 -down- DB4
+
+rectangle "AWS EC2 — Mensageria" as EC2 #FFF8E1 {
+    [RabbitMQ Broker] as RABBIT
+    queue "Fila de\nPagamentos"   as Q_PAY
+    queue "Fila de\nConfirmações" as Q_CONF
+    queue "Fila de\nNotificações" as Q_NOTIF
+}
+
+EVENTS --> Q_PAY   : AMQP
+Q_PAY  --> FIN     : AMQP
+FIN    --> Q_CONF  : AMQP
+Q_CONF --> EVENTS  : AMQP
+EVENTS --> Q_NOTIF : AMQP
+Q_NOTIF --> COMM   : AMQP
+
+rectangle "Stripe (Serviço Externo)" as EXT #FCE4EC {
+    [Stripe API] as STRIPE
+}
+
+interface "HTTPS" as iSTRIPE
+
+STRIPE  -left- iSTRIPE
+FIN    --( iSTRIPE : HTTPS
+
+rectangle "AWS CloudWatch" as CW #ECEFF1 {
+    [Logs e Monitoramento] as CLOUDWATCH
+}
+
+USERS  ..> CLOUDWATCH : logs
+EVENTS ..> CLOUDWATCH : logs
+FIN    ..> CLOUDWATCH : logs
+COMM   ..> CLOUDWATCH : logs
+
+ECS  -[hidden]down-  RDS
+COMM -[hidden]right- EC2
+EC2  -[hidden]down-  EXT
 
 @enduml
