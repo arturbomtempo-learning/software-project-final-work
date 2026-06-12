@@ -21,7 +21,6 @@ skinparam package {
 }
 
 package "DB_USUARIOS" #E8EAF6 {
-
     entity "Usuario" as usuario {
         * id : BIGINT <<PK, NN>>
         nome : VARCHAR(100) <<NN>>
@@ -57,7 +56,6 @@ package "DB_USUARIOS" #E8EAF6 {
 }
 
 package "DB_EVENTOS" #E8F5E9 {
-
     entity "Categoria" as categoria {
         * id : BIGINT <<PK, NN>>
         nome : VARCHAR(100) <<UQ, NN>>
@@ -125,7 +123,6 @@ package "DB_EVENTOS" #E8F5E9 {
 }
 
 package "DB_FINANCEIRO" #FFF8E1 {
-
     entity "Pagamento" as pagamento {
         * id : BIGINT <<PK, NN>>
         id_inscricao : BIGINT <<FK, UQ, NN>>
@@ -148,7 +145,6 @@ package "DB_FINANCEIRO" #FFF8E1 {
 }
 
 package "DB_COMUNICACAO" #FCE4EC {
-
     entity "Duvida" as duvida {
         * id : BIGINT <<PK, NN>>
         id_participante : BIGINT <<FK, NN>>
