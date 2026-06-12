@@ -1,0 +1,171 @@
+@startuml component-diagram
+
+skinparam componentStyle uml2
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam defaultFontSize 11
+skinparam packageStyle rectangle
+
+left to right direction
+
+title Diagrama de Componentes - Sistema de Gerenciamento de Eventos
+
+'==========================
+' INTERFACES DE SERVIÇO
+' (publicadas pelos microsserviços)
+'==========================
+
+interface "IUsuarios"    as IUsers
+interface "IEventos"     as IEvents
+interface "IFinanceiro"  as IFinancial
+interface "IComunicacao" as ICommunication
+interface "IStripe"      as IStripe
+
+'==========================
+' FRONTEND
+'==========================
+
+package "Frontend (Next.js / Vercel)" as FrontendPkg {
+    component "Páginas e Rotas\n(App Router)" as Pages
+    component "Componentes\nde Interface"      as UIComp
+    component "Cliente HTTPS\n(API Client)"    as APIClient
+
+    Pages ..> UIComp
+    Pages ..> APIClient
+}
+
+'==========================
+' CAMADA DE ENTRADA (AWS)
+'==========================
+
+package "API Gateway + Load Balancer (AWS)" as GatewayPkg {
+    component "API Gateway\n(Amazon)" as ApiGateway
+    component "Application\nLoad Balancer" as ALB
+
+    ApiGateway ..> ALB
+}
+
+'==========================
+' MICROSSERVIÇO DE USUÁRIOS
+'==========================
+
+package "Microsserviço de Usuários (ECS)" {
+    component "Serviço Usuários\n(Spring Boot)" as UserService
+    database "PostgreSQL\nUsuários"             as UserDB
+    interface "IDBUsuarios"                     as IDBU
+
+    UserDB      -- IDBU
+    UserService --( IDBU : TCP/IP
+}
+
+'==========================
+' MICROSSERVIÇO DE EVENTOS
+'==========================
+
+package "Microsserviço de Eventos (ECS)" {
+    component "Serviço Eventos\n(Spring Boot)" as EventService
+    database "PostgreSQL\nEventos"              as EventDB
+    interface "IDBEventos"                      as IDBE
+
+    EventDB      -- IDBE
+    EventService --( IDBE : TCP/IP
+}
+
+'==========================
+' MICROSSERVIÇO FINANCEIRO
+'==========================
+
+package "Microsserviço Financeiro (ECS)" {
+    component "Serviço Financeiro\n(Spring Boot)" as FinancialService
+    database "PostgreSQL\nFinanceiro"               as FinancialDB
+    interface "IDBFinanceiro"                        as IDBF
+
+    FinancialDB      -- IDBF
+    FinancialService --( IDBF : TCP/IP
+}
+
+'==========================
+' MICROSSERVIÇO DE COMUNICAÇÃO
+'==========================
+
+package "Microsserviço de Comunicação (ECS)" {
+    component "Serviço Comunicação\n(Spring Boot)" as CommunicationService
+    database "PostgreSQL\nComunicação"               as CommunicationDB
+    interface "IDBComunicacao"                        as IDBC
+
+    CommunicationDB      -- IDBC
+    CommunicationService --( IDBC : TCP/IP
+}
+
+'==========================
+' MENSAGERIA - RABBITMQ (EC2)
+'==========================
+
+package "Mensageria — RabbitMQ (AWS EC2)" as MessagingPkg {
+    component "RabbitMQ Broker"         as RabbitMQ
+    queue "Fila de Pagamentos"          as PaymentQueue
+    queue "Fila de Confirmações"        as ConfirmationQueue
+    queue "Fila de Notificações"        as NotificationQueue
+}
+
+'==========================
+' SERVIÇO EXTERNO - STRIPE
+'==========================
+
+package "Stripe (Serviço Externo)" as StripePkg {
+    component "Stripe API" as Stripe
+}
+
+'==========================
+' INTERFACES FORNECIDAS — SERVIÇOS (lollipop)
+'==========================
+
+UserService          -- IUsers
+EventService         -- IEvents
+FinancialService     -- IFinancial
+CommunicationService -- ICommunication
+Stripe               -- IStripe
+
+'==========================
+' FRONTEND → GATEWAY → MICROSSERVIÇOS
+'==========================
+
+APIClient --> ApiGateway : HTTPS
+
+ALB --( IUsers         : HTTP
+ALB --( IEvents        : HTTP
+ALB --( IFinancial     : HTTP
+ALB --( ICommunication : HTTP
+
+'==========================
+' COMUNICAÇÃO REST ENTRE MICROSSERVIÇOS
+' (interface fornecida + requerida = assembly connector)
+'==========================
+
+EventService         --( IUsers  : REST
+FinancialService     --( IUsers  : REST
+CommunicationService --( IUsers  : REST
+
+FinancialService     --( IEvents : REST
+CommunicationService --( IEvents : REST
+
+'==========================
+' MENSAGERIA — AMQP
+'==========================
+
+EventService         --> PaymentQueue      : AMQP
+PaymentQueue         --> FinancialService  : AMQP
+
+FinancialService     --> ConfirmationQueue : AMQP
+ConfirmationQueue    --> EventService      : AMQP
+
+EventService         --> NotificationQueue : AMQP
+NotificationQueue    --> CommunicationService : AMQP
+
+'==========================
+' INTEGRAÇÃO STRIPE
+'==========================
+
+FinancialService --( IStripe : HTTPS
+
+@enduml
