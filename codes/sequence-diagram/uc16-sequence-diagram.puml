@@ -42,58 +42,59 @@ skinparam queue {
 }
 
 actor "Organizador" as Org
+actor "Participante" as Part
 
-participant "Frontend\n<<Next.js>>" as Tela
-participant "API Gateway\n<<AWS>>" as APIGW
-participant "ControleEvento\n<<Eventos Service>>" as CE
-participant "ControleOrganizador\n<<Usuarios Service>>" as CO
-participant "ControleLocal\n<<Eventos Service>>" as CL
-participant "ControleCategoria\n<<Eventos Service>>" as CC
+participant "Frontend" as Tela
+participant "API Gateway" as APIGW
+participant "ControleEvento" as CE
+participant "ControleOrganizador" as CO
+participant "ControleLocal" as CL
+participant "ControleCategoria" as CC
 
 database "PostgreSQL\nEventos" as DBEventos
 database "PostgreSQL\nUsuarios" as DBUsuarios
 
-queue "Fila de\nNotificações\n<<RabbitMQ>>" as QNotif
+queue "Fila de\nNotificações" as QNotif
 
 participant "Worker\nNotificações" as WN
-participant "Serviço de Email\n<<Comunicacao Service>>" as SE
+participant "Serviço de Email" as SE
 
 == Criação de Evento ==
 
 Org -> Tela : acessarFormularioCriacaoEvento()
 activate Tela
 
-Tela -> APIGW : GET /categorias
+Tela -> APIGW : listarCategorias()
 activate APIGW
 APIGW -> CC : listarCategorias()
 activate CC
 CC -> DBEventos : findAllCategorias()
 activate DBEventos
-DBEventos --> CC : List<Categoria>
+DBEventos --> CC : categoriasEncontradas(listaCategorias)
 deactivate DBEventos
-CC --> APIGW : categorias
+CC --> APIGW : categorias(listaCategorias)
 deactivate CC
-APIGW --> Tela : 200 OK (categorias)
+APIGW --> Tela : categorias(listaCategorias)
 deactivate APIGW
 
-Tela -> APIGW : GET /locais?organizadorID={organizadorID}
+Tela -> APIGW : listarLocais(organizadorID)
 activate APIGW
 APIGW -> CL : listarLocaisDoOrganizador(organizadorID)
 activate CL
 CL -> DBEventos : findLocaisByOrganizador(organizadorID)
 activate DBEventos
-DBEventos --> CL : List<Local>
+DBEventos --> CL : locaisEncontrados(listaLocais)
 deactivate DBEventos
-CL --> APIGW : locais
+CL --> APIGW : locais(listaLocais)
 deactivate CL
-APIGW --> Tela : 200 OK (locais)
+APIGW --> Tela : locais(listaLocais)
 deactivate APIGW
 
 Tela --> Org : exibirFormularioCriacao(categorias, locais)
 
 Org -> Tela : submeterEvento(titulo, descricao, dataInicio, dataFim,\nlocalID, categoriaID, limiteParticipantes, imagem)
 
-Tela -> APIGW : POST /eventos\n[Authorization: Bearer {token}]
+Tela -> APIGW : criarEvento(dadosEvento)
 activate APIGW
 
 APIGW -> CE : criarEvento(dadosEvento, organizadorID)
@@ -103,7 +104,7 @@ CE -> CO : verificarOrganizadorAtivo(organizadorID)
 activate CO
 CO -> DBUsuarios : findOrganizadorById(organizadorID)
 activate DBUsuarios
-DBUsuarios --> CO : Organizador{status=ATIVO}
+DBUsuarios --> CO : organizadorEncontrado(status=ATIVO)
 deactivate DBUsuarios
 CO --> CE : organizadorAutorizado()
 deactivate CO
@@ -112,21 +113,21 @@ CE -> CL : verificarDisponibilidadeLocal(localID, dataInicio, dataFim)
 activate CL
 CL -> DBEventos : findConflitosDeAgenda(localID, dataInicio, dataFim)
 activate DBEventos
-DBEventos --> CL : List<Conflito> (vazio)
+DBEventos --> CL : semConflitosEncontrados()
 deactivate DBEventos
 CL --> CE : localDisponivel()
 deactivate CL
 
 CE -> DBEventos : findCategoriaById(categoriaID)
 activate DBEventos
-DBEventos --> CE : Categoria{nome, descricao}
+DBEventos --> CE : categoriaEncontrada(nome, descricao)
 deactivate DBEventos
 
-alt Evento criado com sucesso [dados válidos AND local disponível]
+alt Dados válidos e local disponível
 
-    CE -> DBEventos : save(Evento{titulo, descricao, dataInicio, dataFim,\nlocalID, categoriaID, organizadorID,\nlimiteParticipantes, imagem, status=RASCUNHO})
+    CE -> DBEventos : salvarEvento(titulo, descricao, dataInicio, dataFim,\nlocalID, categoriaID, organizadorID, status=RASCUNHO)
     activate DBEventos
-    DBEventos --> CE : eventoID
+    DBEventos --> CE : eventoCriado(eventoID)
     deactivate DBEventos
 
     note right of CE
@@ -135,21 +136,20 @@ alt Evento criado com sucesso [dados válidos AND local disponível]
         antes de publicar para os participantes.
     end note
 
-    CE --> APIGW : EventoDTO{eventoID, titulo, status=RASCUNHO}
-    APIGW --> Tela : 201 Created
-    deactivate APIGW
+    CE --> APIGW : eventoCriado(eventoID, status=RASCUNHO)
+    APIGW --> Tela : eventoCriado(eventoID)
     Tela --> Org : exibirEventoCriado(eventoID, status=RASCUNHO)
 
 else Local indisponível no período solicitado
 
-    CE --> APIGW : LocalIndisponivelException{localID, conflitos}
-    APIGW --> Tela : 409 Conflict
-    deactivate APIGW
+    CE --> APIGW : localIndisponivel()
+    APIGW --> Tela : localIndisponivel()
     Tela --> Org : exibirErro("Local indisponível para o período informado")
 
 end
 
 deactivate CE
+deactivate APIGW
 deactivate Tela
 
 == Edição de Evento ==
@@ -157,7 +157,7 @@ deactivate Tela
 Org -> Tela : editarEvento(eventoID, dadosAtualizados)
 activate Tela
 
-Tela -> APIGW : PUT /eventos/{eventoID}\n[Authorization: Bearer {token}]
+Tela -> APIGW : editarEvento(eventoID, dadosAtualizados)
 activate APIGW
 
 APIGW -> CE : atualizarEvento(eventoID, organizadorID, dadosAtualizados)
@@ -165,20 +165,20 @@ activate CE
 
 CE -> DBEventos : findEventoById(eventoID)
 activate DBEventos
-DBEventos --> CE : Evento{status=RASCUNHO, organizadorID}
+DBEventos --> CE : eventoEncontrado(status=RASCUNHO, organizadorID)
 deactivate DBEventos
 
-CE -> DBEventos : update(Evento{eventoID, dadosAtualizados})
+CE -> DBEventos : atualizarEvento(eventoID, dadosAtualizados)
 activate DBEventos
-DBEventos --> CE : updated()
+DBEventos --> CE : eventoAtualizado()
 deactivate DBEventos
 
-CE --> APIGW : EventoDTO{eventoID, status=RASCUNHO, dadosAtualizados}
-APIGW --> Tela : 200 OK
-deactivate APIGW
+CE --> APIGW : eventoAtualizado(eventoID)
+APIGW --> Tela : eventoAtualizado(eventoID)
 Tela --> Org : exibirEventoAtualizado()
 
 deactivate CE
+deactivate APIGW
 deactivate Tela
 
 == Publicação de Evento ==
@@ -186,7 +186,7 @@ deactivate Tela
 Org -> Tela : publicarEvento(eventoID)
 activate Tela
 
-Tela -> APIGW : PATCH /eventos/{eventoID}/publicar\n[Authorization: Bearer {token}]
+Tela -> APIGW : publicarEvento(eventoID)
 activate APIGW
 
 APIGW -> CE : publicarEvento(eventoID, organizadorID)
@@ -194,48 +194,49 @@ activate CE
 
 CE -> DBEventos : findEventoById(eventoID)
 activate DBEventos
-DBEventos --> CE : Evento{status=RASCUNHO, localID, dataInicio, dataFim}
+DBEventos --> CE : eventoEncontrado(status=RASCUNHO, localID, dataInicio, dataFim)
 deactivate DBEventos
 
 CE -> CL : reconfirmarDisponibilidade(localID, dataInicio, dataFim)
 activate CL
 CL -> DBEventos : findConflitosDeAgenda(localID, dataInicio, dataFim)
 activate DBEventos
-DBEventos --> CL : List<Conflito> (vazio)
+DBEventos --> CL : semConflitosEncontrados()
 deactivate DBEventos
 CL --> CE : localConfirmado()
 deactivate CL
 
-CE -> DBEventos : update(Evento{eventoID, status=PUBLICADO, dataPublicacao=now()})
+CE -> DBEventos : atualizarEvento(eventoID, status=PUBLICADO, dataPublicacao)
 activate DBEventos
-DBEventos --> CE : updated()
+DBEventos --> CE : eventoAtualizado()
 deactivate DBEventos
 
 CE -> DBEventos : findFavoritosDoEvento(eventoID)
 activate DBEventos
-DBEventos --> CE : List<Favorito>{participantesInteressados}
+DBEventos --> CE : favoritosEncontrados(participantesInteressados)
 deactivate DBEventos
 
-CE -> QNotif : publish({tipo: EVENTO_PUBLICADO,\neventoID, titulo, dataInicio, participantesInteressados})
+CE -> QNotif : publicarNotificacao(EVENTO_PUBLICADO, eventoID, titulo, participantesInteressados)
 activate QNotif
-QNotif --> CE : ack()
+QNotif --> CE : mensagemPublicada()
 deactivate QNotif
 
-CE --> APIGW : EventoDTO{eventoID, status=PUBLICADO}
-APIGW --> Tela : 200 OK
-deactivate APIGW
+CE --> APIGW : eventoPublicado(eventoID, urlEvento)
+APIGW --> Tela : eventoPublicado(urlEvento)
 Tela --> Org : exibirEventoPublicado(urlEvento, linkInscricao)
 
 deactivate CE
+deactivate APIGW
 deactivate Tela
 
 group Fluxo Assíncrono — Notificação de Publicação
 
-    QNotif -> WN : consumir(EVENTO_PUBLICADO)
+    QNotif -> WN : consumirMensagem()
     activate WN
     WN -> SE : notificarParticipantesInteressados(listaEmails, dadosEvento)
     activate SE
-    SE --> WN : emailsDisparados(qtd)
+    SE ->> Part : emailEventoPublicado()
+    SE --> WN : emailsEnviados()
     deactivate SE
     deactivate WN
 
@@ -246,7 +247,7 @@ end
 Org -> Tela : cancelarEvento(eventoID, motivo)
 activate Tela
 
-Tela -> APIGW : PATCH /eventos/{eventoID}/cancelar\n[Authorization: Bearer {token}]\n(motivo)
+Tela -> APIGW : cancelarEvento(eventoID, motivo)
 activate APIGW
 
 APIGW -> CE : cancelarEvento(eventoID, organizadorID, motivo)
@@ -254,26 +255,26 @@ activate CE
 
 CE -> DBEventos : findEventoById(eventoID)
 activate DBEventos
-DBEventos --> CE : Evento{status=PUBLICADO}
+DBEventos --> CE : eventoEncontrado(status=PUBLICADO)
 deactivate DBEventos
 
 CE -> DBEventos : findInscricoesAtivas(eventoID)
 activate DBEventos
-DBEventos --> CE : List<Inscricao>{confirmadas, pendentes, totalInscritos}
+DBEventos --> CE : inscricoesEncontradas(confirmadas, pendentes, totalInscritos)
 deactivate DBEventos
 
 loop Para cada inscrição ativa
 
-    CE -> DBEventos : update(Inscricao{inscricaoID, status=CANCELADA})
+    CE -> DBEventos : atualizarInscricao(inscricaoID, status=CANCELADA)
     activate DBEventos
-    DBEventos --> CE : updated()
+    DBEventos --> CE : inscricaoAtualizada()
     deactivate DBEventos
 
 end
 
-CE -> DBEventos : update(Evento{eventoID, status=CANCELADO})
+CE -> DBEventos : atualizarEvento(eventoID, status=CANCELADO)
 activate DBEventos
-DBEventos --> CE : updated()
+DBEventos --> CE : eventoAtualizado()
 deactivate DBEventos
 
 note right of CE
@@ -282,26 +283,27 @@ note right of CE
     pelo Financeiro Service (UC20).
 end note
 
-CE -> QNotif : publish({tipo: EVENTO_CANCELADO,\neventoID, motivo, qtdInscritos})
+CE -> QNotif : publicarNotificacao(EVENTO_CANCELADO, eventoID, motivo, qtdInscritos)
 activate QNotif
-QNotif --> CE : ack()
+QNotif --> CE : mensagemPublicada()
 deactivate QNotif
 
-CE --> APIGW : EventoCanceladoDTO{eventoID, qtdInscritos, alertaReembolsos}
-APIGW --> Tela : 200 OK
-deactivate APIGW
+CE --> APIGW : eventoCancelado(eventoID, qtdInscritos)
+APIGW --> Tela : eventoCancelado(eventoID)
 Tela --> Org : exibirEventoCancelado(qtdInscritos, mensagemReembolsos)
 
 deactivate CE
+deactivate APIGW
 deactivate Tela
 
 group Fluxo Assíncrono — Notificação de Cancelamento
 
-    QNotif -> WN : consumir(EVENTO_CANCELADO)
+    QNotif -> WN : consumirMensagem()
     activate WN
     WN -> SE : notificarParticipantesEventoCancelado(listaEmails, motivo, dadosEvento)
     activate SE
-    SE --> WN : emailsDisparados(qtd)
+    SE ->> Part : emailEventoCancelado(motivo)
+    SE --> WN : emailsEnviados()
     deactivate SE
     deactivate WN
 

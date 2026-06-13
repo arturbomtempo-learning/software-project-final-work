@@ -43,28 +43,28 @@ skinparam queue {
 
 actor "Participante" as Part
 
-participant "Frontend\n<<Next.js>>" as Tela
-participant "API Gateway\n<<AWS>>" as APIGW
-participant "ControleFinanceiro\n<<Financeiro Service>>" as CF
-participant "ControleInscricao\n<<Eventos Service>>" as CI
-participant "Stripe API\n<<Serviço Externo>>" as Stripe #FCE4EC ##C62828
+participant "Frontend" as Tela
+participant "API Gateway" as APIGW
+participant "ControleFinanceiro" as CF
+participant "ControleInscricao" as CI
+participant "Stripe API" as Stripe
 
 database "PostgreSQL\nFinanceiro" as DBFin
 database "PostgreSQL\nEventos" as DBEventos
 
-queue "Fila de\nConfirmações\n<<RabbitMQ>>" as QConf
-queue "Fila de\nNotificações\n<<RabbitMQ>>" as QNotif
+queue "Fila de\nConfirmações" as QConf
+queue "Fila de\nNotificações" as QNotif
 
 participant "Worker\nFinanceiro" as WF
 participant "Worker\nNotificações" as WN
-participant "Serviço de Email\n<<Comunicacao Service>>" as SE
+participant "Serviço de Email" as SE
 
 == Inicialização da Sessão de Pagamento ==
 
 Part -> Tela : iniciarPagamento(inscricaoID)
 activate Tela
 
-Tela -> APIGW : GET /inscricoes/{inscricaoID}/pagamento\n[Authorization: Bearer {token}]
+Tela -> APIGW : obterDadosPagamento(inscricaoID)
 activate APIGW
 
 APIGW -> CF : obterSessaoPagamento(inscricaoID, participanteID)
@@ -74,92 +74,92 @@ CF -> CI : verificarInscricaoPendente(inscricaoID)
 activate CI
 CI -> DBEventos : findInscricaoById(inscricaoID)
 activate DBEventos
-DBEventos --> CI : Inscricao{status=PENDENTE, valor, eventoID}
+DBEventos --> CI : inscricaoEncontrada(status=PENDENTE, valor, eventoID)
 deactivate DBEventos
 CI --> CF : inscricaoValida(valor, dadosEvento)
 deactivate CI
 
 CF -> DBFin : findPagamentoByInscricao(inscricaoID)
 activate DBFin
-DBFin --> CF : Pagamento{pagamentoID, status=PENDENTE, valor}
+DBFin --> CF : pagamentoEncontrado(pagamentoID, status=PENDENTE, valor)
 deactivate DBFin
 
-CF --> APIGW : SessaoPagamentoDTO{pagamentoID, valor, metodosDisponiveis}
-APIGW --> Tela : 200 OK
+CF --> APIGW : sessaoPagamentoInicializada(pagamentoID, valor, metodosDisponiveis)
+APIGW --> Tela : sessaoPagamentoInicializada(dadosPagamento)
 Tela --> Part : exibirOpcoesMetodoPagamento(valor, metodos)
 
 deactivate CF
 deactivate APIGW
 deactivate Tela
 
-== Confirmação de Ação — UC29 (<<include>>) ==
+== Confirmação de Ação — UC29 (include) ==
 
 Part -> Tela : selecionarMetodoEConfirmar(metodo, dadosCartao)
 activate Tela
 
 note over Part, Tela
-    UC29 — Confirmar Ação (<<include>>):
+    UC29 — Confirmar Ação (include):
     Sistema exibe resumo detalhado do pagamento
     (valor, método, dados do evento e ingresso).
     Participante revisa e confirma explicitamente
     antes do processamento financeiro.
 end note
 
-Tela -> APIGW : POST /pagamentos/{pagamentoID}/processar\n(metodo, tokenCartao, nomePortador)
+Tela -> APIGW : processarPagamento(pagamentoID, metodo, dadosCartao)
 activate APIGW
 
 APIGW -> CF : processarPagamento(pagamentoID, metodo, tokenCartao)
 activate CF
 
-CF -> DBFin : update(Pagamento{pagamentoID, metodo, status=PROCESSANDO})
+CF -> DBFin : atualizarPagamento(pagamentoID, metodo, status=PROCESSANDO)
 activate DBFin
-DBFin --> CF : updated()
+DBFin --> CF : pagamentoAtualizado()
 deactivate DBFin
 
 == Integração com Gateway de Pagamento Externo ==
 
-CF -> Stripe : POST /v1/charges\n{amount, currency="BRL", source=tokenCartao,\ndescription, metadata={pagamentoID, inscricaoID}}
+CF -> Stripe : criarCobranca(tokenCartao, valor, moeda)
 activate Stripe
 
-Stripe --> CF : ChargeResult{chargeID, status, outcome{networkStatus, reason}}
+Stripe --> CF : cobrancaProcessada(chargeID, status)
 deactivate Stripe
 
-alt Pagamento aprovado [status = "succeeded"]
+alt Pagamento aprovado pelo Stripe
 
-    CF -> DBFin : update(Pagamento{pagamentoID, status=APROVADO,\nchargeID, comprovante=chargeID, dataPagamento=now()})
+    CF -> DBFin : atualizarPagamento(pagamentoID, status=APROVADO, chargeID, dataPagamento)
     activate DBFin
-    DBFin --> CF : updated()
+    DBFin --> CF : pagamentoAtualizado()
     deactivate DBFin
 
-    CF -> QConf : publish({tipo: PAGAMENTO_CONFIRMADO,\npagamentoID, inscricaoID, eventoID, participanteID})
+    CF -> QConf : publicarConfirmacao(PAGAMENTO_CONFIRMADO, inscricaoID, participanteID)
     activate QConf
-    QConf --> CF : ack()
+    QConf --> CF : mensagemPublicada()
     deactivate QConf
 
-    CF --> APIGW : PagamentoAprovadoDTO{pagamentoID,\nstatus=APROVADO, comprovante, chargeID}
-    APIGW --> Tela : 200 OK
+    CF --> APIGW : pagamentoAprovado(pagamentoID, comprovante)
+    APIGW --> Tela : pagamentoAprovado(dadosPagamento)
     Tela --> Part : exibirComprovantePagamento(pagamentoID, comprovante)
 
-else Pagamento recusado [status = "failed"]
+else Pagamento recusado pelo Stripe
 
-    CF -> DBFin : update(Pagamento{pagamentoID, status=CANCELADO,\nmotivoRecusa=outcome.reason})
+    CF -> DBFin : atualizarPagamento(pagamentoID, status=CANCELADO, motivoRecusa)
     activate DBFin
-    DBFin --> CF : updated()
+    DBFin --> CF : pagamentoAtualizado()
     deactivate DBFin
 
-    CF --> APIGW : PagamentoRecusadoException{codigoErro, descricaoRecusa}
-    APIGW --> Tela : 402 Payment Required
+    CF --> APIGW : pagamentoRecusado(motivo)
+    APIGW --> Tela : pagamentoRecusado(motivo)
     Tela --> Part : exibirErroPagamento(motivoRecusa)
 
-else Timeout na comunicação com Stripe
+else Falha temporária na comunicação com Stripe
 
-    CF -> DBFin : update(Pagamento{pagamentoID, status=PENDENTE,\nobservacao="timeout_gateway"})
+    CF -> DBFin : atualizarPagamento(pagamentoID, status=PENDENTE, observacao)
     activate DBFin
-    DBFin --> CF : updated()
+    DBFin --> CF : pagamentoAtualizado()
     deactivate DBFin
 
-    CF --> APIGW : StripeTimeoutException
-    APIGW --> Tela : 504 Gateway Timeout
+    CF --> APIGW : falhaTemporaria()
+    APIGW --> Tela : falhaTemporaria()
     Tela --> Part : exibirMensagem("Falha temporária. Tente novamente em instantes.")
 
 end
@@ -172,25 +172,25 @@ deactivate Tela
 
 group Fluxo Assíncrono
 
-    QConf -> WF : consumir(PAGAMENTO_CONFIRMADO)
+    QConf -> WF : consumirMensagem()
     activate WF
 
     WF -> CI : confirmarInscricao(inscricaoID)
     activate CI
 
-    CI -> DBEventos : update(Inscricao{inscricaoID, status=CONFIRMADA})
+    CI -> DBEventos : atualizarInscricao(inscricaoID, status=CONFIRMADA)
     activate DBEventos
-    DBEventos --> CI : updated()
+    DBEventos --> CI : inscricaoAtualizada()
     deactivate DBEventos
 
-    CI -> DBEventos : update(Ingresso{ingressoID, status=VALIDO})
+    CI -> DBEventos : atualizarIngresso(ingressoID, status=VALIDO)
     activate DBEventos
-    DBEventos --> CI : updated()
+    DBEventos --> CI : ingressoAtualizado()
     deactivate DBEventos
 
-    CI -> QNotif : publish({tipo: INGRESSO_CONFIRMADO,\nparticipanteID, ingressoID, codigoIngresso, eventoID})
+    CI -> QNotif : publicarNotificacao(INGRESSO_CONFIRMADO, participanteID, ingressoID, codigoIngresso)
     activate QNotif
-    QNotif --> CI : ack()
+    QNotif --> CI : mensagemPublicada()
     deactivate QNotif
 
     CI --> WF : inscricaoConfirmada(codigoIngresso)
@@ -203,11 +203,12 @@ end
 
 group Fluxo Assíncrono
 
-    QNotif -> WN : consumir(INGRESSO_CONFIRMADO)
+    QNotif -> WN : consumirMensagem()
     activate WN
-    WN -> SE : enviarEmailIngressoConfirmado(participanteEmail,\ncodigoIngresso, qrCode, dadosEvento)
+    WN -> SE : enviarEmailIngressoConfirmado(participanteEmail, codigoIngresso, qrCode, dadosEvento)
     activate SE
-    SE --> WN : emailDisparado()
+    SE ->> Part : emailIngressoConfirmado()
+    SE --> WN : emailEnviado()
     deactivate SE
     deactivate WN
 

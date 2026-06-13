@@ -42,27 +42,28 @@ skinparam queue {
 }
 
 actor "Participante" as Part
+actor "Organizador" as Org
 
-participant "Frontend\n<<Next.js>>" as Tela
-participant "API Gateway\n<<AWS>>" as APIGW
-participant "ControleInscricao\n<<Eventos Service>>" as CI
-participant "ControleEvento\n<<Eventos Service>>" as CE
-participant "ControleUsuario\n<<Usuarios Service>>" as CU
+participant "Frontend" as Tela
+participant "API Gateway" as APIGW
+participant "ControleInscricao" as CI
+participant "ControleEvento" as CE
+participant "ControleUsuario" as CU
 
 database "PostgreSQL\nEventos" as DBEventos
 database "PostgreSQL\nUsuarios" as DBUsuarios
 
-queue "Fila de\nNotificações\n<<RabbitMQ>>" as QNotif
+queue "Fila de\nNotificações" as QNotif
 
 participant "Worker\nNotificações" as WN
-participant "Serviço de Email\n<<Comunicacao Service>>" as SE
+participant "Serviço de Email" as SE
 
 == Criação de Inscrição ==
 
 Part -> Tela : solicitarInscricao(eventoID)
 activate Tela
 
-Tela -> APIGW : POST /eventos/{eventoID}/inscricoes\n[Authorization: Bearer {token}]
+Tela -> APIGW : solicitarInscricao(eventoID)
 activate APIGW
 
 APIGW -> CI : inscrever(eventoID, participanteID)
@@ -72,7 +73,7 @@ CI -> CU : verificarParticipante(participanteID)
 activate CU
 CU -> DBUsuarios : findById(participanteID)
 activate DBUsuarios
-DBUsuarios --> CU : Participante{status=ATIVO}
+DBUsuarios --> CU : participanteEncontrado()
 deactivate DBUsuarios
 CU --> CI : participanteAtivo()
 deactivate CU
@@ -81,26 +82,26 @@ CI -> CE : verificarDisponibilidadeEvento(eventoID)
 activate CE
 CE -> DBEventos : findEventoById(eventoID)
 activate DBEventos
-DBEventos --> CE : Evento{status=PUBLICADO, limiteParticipantes, totalInscritos}
+DBEventos --> CE : eventoEncontrado(limiteParticipantes, totalInscritos)
 deactivate DBEventos
 CE --> CI : eventoDisponivel(vagasRestantes)
 deactivate CE
 
 CI -> DBEventos : existeInscricaoAtiva(eventoID, participanteID)
 activate DBEventos
-DBEventos --> CI : false
+DBEventos --> CI : inscricaoInexistente()
 deactivate DBEventos
 
-alt Inscrição criada com sucesso [vagasRestantes > 0 AND sem inscrição prévia]
+alt Evento disponível e participante elegível
 
-    CI -> DBEventos : save(Inscricao{eventoID, participanteID,\ndata=now(), status=PENDENTE})
+    CI -> DBEventos : salvarInscricao(eventoID, participanteID, data, status=PENDENTE)
     activate DBEventos
-    DBEventos --> CI : inscricaoID
+    DBEventos --> CI : inscricaoCriada(inscricaoID)
     deactivate DBEventos
 
-    CI -> DBEventos : save(Ingresso{inscricaoID, codigo=UUID,\ndataEmissao=now(), status=VALIDO})
+    CI -> DBEventos : salvarIngresso(inscricaoID, codigo, dataEmissao, status=VALIDO)
     activate DBEventos
-    DBEventos --> CI : Ingresso{ingressoID, codigoIngresso}
+    DBEventos --> CI : ingressoCriado(ingressoID, codigoIngresso)
     deactivate DBEventos
 
     note right of CI
@@ -109,25 +110,25 @@ alt Inscrição criada com sucesso [vagasRestantes > 0 AND sem inscrição prév
         Ingresso gerado com código único (UUID).
     end note
 
-    CI -> QNotif : publish({tipo: INSCRICAO_CRIADA,\nparticipanteID, eventoID, ingressoID})
+    CI -> QNotif : publicarNotificacao(INSCRICAO_CRIADA, participanteID, eventoID, ingressoID)
     activate QNotif
-    QNotif --> CI : ack()
+    QNotif --> CI : mensagemPublicada()
     deactivate QNotif
 
-    CI --> APIGW : InscricaoResponseDTO{inscricaoID, ingressoID,\ncodigoIngresso, status=PENDENTE, valorIngresso}
-    APIGW --> Tela : 201 Created
+    CI --> APIGW : inscricaoCriada(inscricaoID, codigoIngresso, valorIngresso)
+    APIGW --> Tela : inscricaoCriada(dadosInscricao)
     Tela --> Part : exibirResumoInscricao(inscricaoID, codigoIngresso, valor)
 
-else Evento sem vagas [vagasRestantes = 0]
+else Evento sem vagas disponíveis
 
-    CI --> APIGW : EventoLotadoException
-    APIGW --> Tela : 409 Conflict
+    CI --> APIGW : eventoLotado()
+    APIGW --> Tela : eventoLotado()
     Tela --> Part : exibirErro("Evento esgotado, sem vagas disponíveis")
 
-else Participante já inscrito [existeInscricaoAtiva = true]
+else Participante já inscrito neste evento
 
-    CI --> APIGW : InscricaoDuplicadaException
-    APIGW --> Tela : 409 Conflict
+    CI --> APIGW : inscricaoDuplicada()
+    APIGW --> Tela : inscricaoDuplicada()
     Tela --> Part : exibirErro("Você já possui uma inscrição ativa neste evento")
 
 end
@@ -140,11 +141,13 @@ deactivate Tela
 
 group Fluxo Assíncrono
 
-    QNotif -> WN : consumir(INSCRICAO_CRIADA)
+    QNotif -> WN : consumirMensagem()
     activate WN
-    WN -> SE : enviarEmailConfirmacaoInscricao(participanteEmail,\ndadosEvento, codigoIngresso)
+    WN -> SE : enviarEmailsInscricaoCriada(participanteEmail, organizadorEmail,\ndadosEvento, codigoIngresso)
     activate SE
-    SE --> WN : emailDisparado()
+    SE ->> Part : emailConfirmacaoInscricao()
+    SE ->> Org : emailNovaInscricaoRecebida()
+    SE --> WN : emailsEnviados()
     deactivate SE
     deactivate WN
 
@@ -155,7 +158,7 @@ end
 Part -> Tela : cancelarInscricao(inscricaoID)
 activate Tela
 
-Tela -> APIGW : DELETE /inscricoes/{inscricaoID}\n[Authorization: Bearer {token}]
+Tela -> APIGW : cancelarInscricao(inscricaoID)
 activate APIGW
 
 APIGW -> CI : cancelarInscricao(inscricaoID, participanteID)
@@ -163,7 +166,7 @@ activate CI
 
 CI -> DBEventos : findInscricaoById(inscricaoID)
 activate DBEventos
-DBEventos --> CI : Inscricao{status, ingressoID, eventoID}
+DBEventos --> CI : inscricaoEncontrada(status, ingressoID, eventoID)
 deactivate DBEventos
 
 opt Inscrição com status CONFIRMADA (pagamento já realizado)
@@ -176,23 +179,23 @@ opt Inscrição com status CONFIRMADA (pagamento já realizado)
 
 end
 
-CI -> DBEventos : update(Inscricao{inscricaoID, status=CANCELADA})
+CI -> DBEventos : atualizarInscricao(inscricaoID, status=CANCELADA)
 activate DBEventos
-DBEventos --> CI : updated()
+DBEventos --> CI : inscricaoAtualizada()
 deactivate DBEventos
 
-CI -> DBEventos : update(Ingresso{ingressoID, status=CANCELADO})
+CI -> DBEventos : atualizarIngresso(ingressoID, status=CANCELADO)
 activate DBEventos
-DBEventos --> CI : updated()
+DBEventos --> CI : ingressoAtualizado()
 deactivate DBEventos
 
-CI -> QNotif : publish({tipo: INSCRICAO_CANCELADA,\nparticipanteID, eventoID, inscricaoID})
+CI -> QNotif : publicarNotificacao(INSCRICAO_CANCELADA, participanteID, eventoID, inscricaoID)
 activate QNotif
-QNotif --> CI : ack()
+QNotif --> CI : mensagemPublicada()
 deactivate QNotif
 
-CI --> APIGW : 204 No Content
-APIGW --> Tela : 204 No Content
+CI --> APIGW : cancelamentoConcluido()
+APIGW --> Tela : cancelamentoConcluido()
 Tela --> Part : exibirConfirmacaoCancelamento()
 
 deactivate CI
@@ -201,11 +204,13 @@ deactivate Tela
 
 group Fluxo Assíncrono — Notificação de Cancelamento
 
-    QNotif -> WN : consumir(INSCRICAO_CANCELADA)
+    QNotif -> WN : consumirMensagem()
     activate WN
-    WN -> SE : enviarEmailCancelamentoInscricao(participanteEmail, dadosEvento)
+    WN -> SE : enviarEmailCancelamento(participanteEmail, organizadorEmail, dadosEvento)
     activate SE
-    SE --> WN : emailDisparado()
+    SE ->> Part : emailCancelamentoInscricao()
+    SE ->> Org : emailInscricaoCancelada()
+    SE --> WN : emailsEnviados()
     deactivate SE
     deactivate WN
 
