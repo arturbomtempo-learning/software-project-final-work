@@ -1,0 +1,92 @@
+@startuml architecture-diagram
+
+title Diagrama de Arquitetura - Sistema de Gerenciamento de Eventos
+
+skinparam rectangle<<behavior>> {
+    roundCorner 25
+}
+
+sprite $bProcess jar:archimate/business-process
+sprite $aService jar:archimate/application-service
+sprite $aComponent jar:archimate/application-component
+
+' === Camada de Processos de Negócio ===
+
+rectangle "Gerenciar\nPlataforma\nde Eventos" as GPE <<$bProcess>><<behavior>> #Business
+
+rectangle "Gerenciar\nContas e Acesso" as GCA <<$bProcess>><<behavior>> #Business
+rectangle "Gerenciar\nParticipação\nem Eventos" as GPEV <<$bProcess>><<behavior>> #Business
+rectangle "Processar\nPagamentos" as PP <<$bProcess>><<behavior>> #Business
+rectangle "Organizar\nEventos" as OE <<$bProcess>><<behavior>> #Business
+rectangle "Comunicar\ne Notificar" as CN <<$bProcess>><<behavior>> #Business
+
+GPE *-down- GCA
+GPE *-down- GPEV
+GPE *-down- PP
+GPE *-down- OE
+GPE *-down- CN
+
+GCA -right->> GPEV
+GPEV -right->> PP
+PP -right->> OE
+OE -right->> CN
+
+' === Camada de Serviços de Aplicação ===
+
+rectangle "Autenticação\ne Cadastro" as SAC <<$aService>><<behavior>> #Application
+rectangle "Catálogo e\nInscrições" as SCI <<$aService>><<behavior>> #Application
+rectangle "Gestão\nFinanceira" as SGF <<$aService>><<behavior>> #Application
+rectangle "Mensageria\nAssíncrona" as SMA <<$aService>><<behavior>> #Application
+rectangle "Notificações\ne E-mails" as SNE <<$aService>><<behavior>> #Application
+
+SAC -up-> GCA
+
+SCI -up-> GPEV
+SCI -up-> OE
+
+SGF -up-> PP
+
+SMA -up-> GPEV
+SMA -up-> PP
+SMA -up-> CN
+
+SNE -up-> CN
+
+' === Camada de Componentes de Aplicação ===
+
+rectangle "Sistema de\nUsuários\n(Spring Boot)" as CUSR <<$aComponent>> #Application
+rectangle "Sistema de\nEventos\n(Spring Boot)" as CEVT <<$aComponent>> #Application
+rectangle "Sistema\nFinanceiro\n(Spring Boot)" as CFIN <<$aComponent>> #Application
+rectangle "Sistema de\nComunicação\n(Spring Boot)" as CCOM <<$aComponent>> #Application
+rectangle "Broker de\nMensagens\n(RabbitMQ)" as CMSG <<$aComponent>> #Application
+rectangle "Bancos de\nDados\n(PostgreSQL)" as CDB <<$aComponent>> #Application
+rectangle "Serviços\nExternos\n(Stripe / SES)" as CEXT <<$aComponent>> #Application
+
+CUSR .up.|> SAC
+
+CEVT .up.|> SCI
+
+CFIN .up.|> SGF
+
+CCOM .up.|> SNE
+
+CMSG .up.|> SMA
+
+CDB .up.|> SAC
+CDB .up.|> SCI
+CDB .up.|> SGF
+
+CEXT .up.|> SGF
+CEXT .up.|> SNE
+
+legend left
+Sistema de Gerenciamento de Eventos - PUC Minas
+====
+<$bProcess> : processo de negócio
+====
+<$aService> : serviço de aplicação
+====
+<$aComponent> : componente de aplicação
+endlegend
+
+@enduml
