@@ -1,0 +1,72 @@
+@startuml uc16-communication-diagram
+
+title UC16 - Gerenciar Eventos
+
+package "Atores" {
+    object Organizador
+    object Participante
+}
+
+package "Controles" {
+    object ControleEvento
+    object ControleOrganizador
+    object ControleLocal
+    object ControleCategoria
+}
+
+package "Persistência" {
+    object DBEventos
+    object DBUsuarios
+}
+
+package "Notificações" {
+    object FilaNotificacoes
+    object WorkerNotificacoes
+    object ServicoEmail
+}
+
+Organizador --> ControleEvento : Criar Evento
+ControleEvento --> ControleOrganizador : Verificar Organizador
+ControleOrganizador --> DBUsuarios : Consultar Organizador
+ControleEvento --> ControleLocal : Verificar Disponibilidade do Local
+ControleLocal --> DBEventos : Consultar Conflitos de Agenda
+ControleEvento --> ControleCategoria : Consultar Categoria
+ControleCategoria --> DBEventos : Buscar Categoria
+ControleEvento --> DBEventos : Registrar Evento como Rascunho
+
+Organizador --> ControleEvento : Editar Evento
+ControleEvento --> DBEventos : Consultar Evento
+ControleEvento --> DBEventos : Atualizar Dados do Evento
+
+Organizador --> ControleEvento : Publicar Evento
+ControleEvento --> ControleLocal : Reconfirmar Disponibilidade do Local
+ControleLocal --> DBEventos : Consultar Conflitos de Agenda
+ControleEvento --> DBEventos : Atualizar Status para Publicado
+ControleEvento --> DBEventos : Consultar Participantes Interessados
+ControleEvento --> FilaNotificacoes : Publicar Notificação de Evento Publicado
+FilaNotificacoes --> WorkerNotificacoes : Consumir Mensagem
+WorkerNotificacoes --> ServicoEmail : Notificar Participantes Interessados
+ServicoEmail --> Participante : E-mail de Evento Publicado
+
+Organizador --> ControleEvento : Cancelar Evento
+ControleEvento --> DBEventos : Consultar Inscrições Ativas
+ControleEvento --> DBEventos : Cancelar Inscrições e Ingressos
+ControleEvento --> DBEventos : Atualizar Status para Cancelado
+ControleEvento --> FilaNotificacoes : Publicar Notificação de Cancelamento
+FilaNotificacoes --> WorkerNotificacoes : Consumir Mensagem
+WorkerNotificacoes --> ServicoEmail : Notificar Participantes Inscritos
+ServicoEmail --> Participante : E-mail de Evento Cancelado
+
+note left of ControleEvento
+  Valida disponibilidade do local
+  antes de criar ou publicar
+  o evento
+end note
+
+note right of FilaNotificacoes
+  Notificações assíncronas
+  enviadas a participantes
+  interessados e inscritos
+end note
+
+@enduml

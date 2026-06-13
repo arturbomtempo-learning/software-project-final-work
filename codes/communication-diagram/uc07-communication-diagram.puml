@@ -1,0 +1,62 @@
+@startuml uc07-communication-diagram
+
+title UC07 - Realizar Pagamento do Ingresso
+
+package "Atores" {
+    object Participante
+}
+
+package "Controles" {
+    object ControleFinanceiro
+    object ControleInscricao
+}
+
+package "Externo" {
+    object StripeAPI
+}
+
+package "Persistência" {
+    object DBFinanceiro
+    object DBEventos
+}
+
+package "Notificações" {
+    object FilaConfirmacoes
+    object FilaNotificacoes
+    object WorkerFinanceiro
+    object WorkerNotificacoes
+    object ServicoEmail
+}
+
+Participante --> ControleFinanceiro : Iniciar Pagamento
+ControleFinanceiro --> ControleInscricao : Verificar Inscrição Pendente
+ControleInscricao --> DBEventos : Consultar Inscrição
+ControleFinanceiro --> DBFinanceiro : Consultar Dados do Pagamento
+ControleFinanceiro --> StripeAPI : Processar Cobrança
+StripeAPI --> ControleFinanceiro : Resultado da Cobrança
+ControleFinanceiro --> DBFinanceiro : Atualizar Status do Pagamento
+ControleFinanceiro --> FilaConfirmacoes : Publicar Confirmação de Pagamento
+ControleFinanceiro --> Participante : Exibir Comprovante de Pagamento
+
+FilaConfirmacoes --> WorkerFinanceiro : Consumir Mensagem
+WorkerFinanceiro --> ControleInscricao : Confirmar Inscrição
+ControleInscricao --> DBEventos : Atualizar Inscrição e Ingresso
+ControleInscricao --> FilaNotificacoes : Publicar Notificação de Ingresso
+
+FilaNotificacoes --> WorkerNotificacoes : Consumir Mensagem
+WorkerNotificacoes --> ServicoEmail : Enviar E-mail de Ingresso Confirmado
+ServicoEmail --> Participante : E-mail com Ingresso e QR Code
+
+note right of StripeAPI
+  Gateway de pagamento externo
+  responsável pela cobrança
+  do cartão do participante
+end note
+
+note left of ControleFinanceiro
+  Em caso de recusa pelo Stripe,
+  o pagamento é marcado como
+  cancelado e o erro é retornado
+end note
+
+@enduml

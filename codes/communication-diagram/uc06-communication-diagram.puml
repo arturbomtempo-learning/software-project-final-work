@@ -1,0 +1,58 @@
+@startuml uc06-communication-diagram
+
+title UC06 - Gerenciar Inscrição no Evento
+
+package "Atores" {
+    object Participante
+    object Organizador
+}
+
+package "Controles" {
+    object ControleInscricao
+    object ControleEvento
+    object ControleUsuario
+}
+
+package "Persistência" {
+    object DBEventos
+    object DBUsuarios
+}
+
+package "Notificações" {
+    object FilaNotificacoes
+    object WorkerNotificacoes
+    object ServicoEmail
+}
+
+Participante --> ControleInscricao : Solicitar Inscrição
+ControleInscricao --> ControleUsuario : Verificar Participante
+ControleUsuario --> DBUsuarios : Consultar Participante
+ControleInscricao --> ControleEvento : Verificar Disponibilidade do Evento
+ControleEvento --> DBEventos : Consultar Evento
+ControleInscricao --> DBEventos : Registrar Inscrição
+ControleInscricao --> FilaNotificacoes : Publicar Notificação de Inscrição
+FilaNotificacoes --> WorkerNotificacoes : Consumir Mensagem
+WorkerNotificacoes --> ServicoEmail : Enviar E-mails de Confirmação
+ServicoEmail --> Participante : E-mail de Confirmação de Inscrição
+ServicoEmail --> Organizador : E-mail de Nova Inscrição Recebida
+
+Participante --> ControleInscricao : Cancelar Inscrição
+ControleInscricao --> DBEventos : Atualizar Status da Inscrição
+ControleInscricao --> FilaNotificacoes : Publicar Notificação de Cancelamento
+FilaNotificacoes --> WorkerNotificacoes : Consumir Mensagem
+WorkerNotificacoes --> ServicoEmail : Enviar E-mails de Cancelamento
+ServicoEmail --> Participante : E-mail de Cancelamento de Inscrição
+ServicoEmail --> Organizador : E-mail de Inscrição Cancelada
+
+note left of ControleInscricao
+  Verifica disponibilidade de vagas
+  e duplicidade antes de registrar
+end note
+
+note right of FilaNotificacoes
+  Comunicação assíncrona entre
+  o serviço de negócio e o
+  sistema de notificações
+end note
+
+@enduml
