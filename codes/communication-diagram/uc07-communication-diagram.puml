@@ -28,24 +28,24 @@ package "Notificações" {
     object ServicoEmail
 }
 
-Participante --> ControleFinanceiro : Iniciar Pagamento
-ControleFinanceiro --> ControleInscricao : Verificar Inscrição Pendente
-ControleInscricao --> DBEventos : Consultar Inscrição
-ControleFinanceiro --> DBFinanceiro : Consultar Dados do Pagamento
-ControleFinanceiro --> StripeAPI : Processar Cobrança
-StripeAPI --> ControleFinanceiro : Resultado da Cobrança
-ControleFinanceiro --> DBFinanceiro : Atualizar Status do Pagamento
-ControleFinanceiro --> FilaConfirmacoes : Publicar Confirmação de Pagamento
-ControleFinanceiro --> Participante : Exibir Comprovante de Pagamento
+Participante --> ControleFinanceiro : 1. Iniciar Pagamento
+ControleFinanceiro --> ControleInscricao : 1.1 Verificar Inscrição Pendente
+ControleInscricao --> DBEventos : 1.1.1 Consultar Inscrição
+ControleFinanceiro --> DBFinanceiro : 1.2 Consultar Dados do Pagamento
+ControleFinanceiro --> StripeAPI : 1.3 Processar Cobrança
+StripeAPI --> ControleFinanceiro : 1.3.1 Resultado da Cobrança
+ControleFinanceiro --> DBFinanceiro : 1.4 Atualizar Status do Pagamento
+ControleFinanceiro --> FilaConfirmacoes : 1.5 Publicar Confirmação de Pagamento
+ControleFinanceiro --> Participante : 1.6 Confirmar Pagamento
 
-FilaConfirmacoes --> WorkerFinanceiro : Consumir Mensagem
-WorkerFinanceiro --> ControleInscricao : Confirmar Inscrição
-ControleInscricao --> DBEventos : Atualizar Inscrição e Ingresso
-ControleInscricao --> FilaNotificacoes : Publicar Notificação de Ingresso
+FilaConfirmacoes --> WorkerFinanceiro : 2. Consumir Mensagem
+WorkerFinanceiro --> ControleInscricao : 2.1 Confirmar Inscrição
+ControleInscricao --> DBEventos : 2.1.1 Atualizar Inscrição e Ingresso
+ControleInscricao --> FilaNotificacoes : 2.1.2 Publicar Notificação de Ingresso
 
-FilaNotificacoes --> WorkerNotificacoes : Consumir Mensagem
-WorkerNotificacoes --> ServicoEmail : Enviar E-mail de Ingresso Confirmado
-ServicoEmail --> Participante : E-mail com Ingresso e QR Code
+FilaNotificacoes --> WorkerNotificacoes : 3. Consumir Mensagem
+WorkerNotificacoes --> ServicoEmail : 3.1 Enviar E-mail de Ingresso Confirmado
+ServicoEmail --> Participante : 3.1.1 E-mail com Ingresso e QR Code
 
 note right of StripeAPI
   Gateway de pagamento externo

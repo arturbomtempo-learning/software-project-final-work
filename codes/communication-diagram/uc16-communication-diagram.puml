@@ -25,37 +25,38 @@ package "Notificações" {
     object ServicoEmail
 }
 
-Organizador --> ControleEvento : Criar Evento
-ControleEvento --> ControleOrganizador : Verificar Organizador
-ControleOrganizador --> DBUsuarios : Consultar Organizador
-ControleEvento --> ControleLocal : Verificar Disponibilidade do Local
-ControleLocal --> DBEventos : Consultar Conflitos de Agenda
-ControleEvento --> ControleCategoria : Consultar Categoria
-ControleCategoria --> DBEventos : Buscar Categoria
-ControleEvento --> DBEventos : Registrar Evento como Rascunho
+Organizador --> ControleEvento : 1. Criar Evento
+ControleEvento --> ControleOrganizador : 1.1 Verificar Organizador
+ControleOrganizador --> DBUsuarios : 1.1.1 Consultar Organizador
+ControleEvento --> ControleLocal : 1.2 Verificar Disponibilidade do Local
+ControleLocal --> DBEventos : 1.2.1 Consultar Conflitos de Agenda
+ControleEvento --> ControleCategoria : 1.3 Consultar Categoria
+ControleCategoria --> DBEventos : 1.3.1 Buscar Categoria
+ControleEvento --> DBEventos : 1.4 Registrar Evento como Rascunho
 
-Organizador --> ControleEvento : Editar Evento
-ControleEvento --> DBEventos : Consultar Evento
-ControleEvento --> DBEventos : Atualizar Dados do Evento
+Organizador --> ControleEvento : 2. Editar Evento
+ControleEvento --> DBEventos : 2.1 Consultar Evento
+ControleEvento --> DBEventos : 2.2 Atualizar Dados do Evento
 
-Organizador --> ControleEvento : Publicar Evento
-ControleEvento --> ControleLocal : Reconfirmar Disponibilidade do Local
-ControleLocal --> DBEventos : Consultar Conflitos de Agenda
-ControleEvento --> DBEventos : Atualizar Status para Publicado
-ControleEvento --> DBEventos : Consultar Participantes Interessados
-ControleEvento --> FilaNotificacoes : Publicar Notificação de Evento Publicado
-FilaNotificacoes --> WorkerNotificacoes : Consumir Mensagem
-WorkerNotificacoes --> ServicoEmail : Notificar Participantes Interessados
-ServicoEmail --> Participante : E-mail de Evento Publicado
+Organizador --> ControleEvento : 3. Publicar Evento
+ControleEvento --> ControleLocal : 3.1 Reconfirmar Disponibilidade do Local
+ControleLocal --> DBEventos : 3.1.1 Consultar Conflitos de Agenda
+ControleEvento --> DBEventos : 3.2 Atualizar Status para Publicado
+ControleEvento --> DBEventos : 3.3 Consultar Participantes Interessados
+ControleEvento --> FilaNotificacoes : 3.4 Publicar Notificação de Evento Publicado
+FilaNotificacoes --> WorkerNotificacoes : 3.4.1 Consumir Mensagem
+WorkerNotificacoes --> ServicoEmail : 3.4.2 Notificar Participantes Interessados
+ServicoEmail --> Participante : 3.4.2.1 E-mail de Evento Publicado
 
-Organizador --> ControleEvento : Cancelar Evento
-ControleEvento --> DBEventos : Consultar Inscrições Ativas
-ControleEvento --> DBEventos : Cancelar Inscrições e Ingressos
-ControleEvento --> DBEventos : Atualizar Status para Cancelado
-ControleEvento --> FilaNotificacoes : Publicar Notificação de Cancelamento
-FilaNotificacoes --> WorkerNotificacoes : Consumir Mensagem
-WorkerNotificacoes --> ServicoEmail : Notificar Participantes Inscritos
-ServicoEmail --> Participante : E-mail de Evento Cancelado
+Organizador --> ControleEvento : 4. Cancelar Evento
+ControleEvento --> DBEventos : 4.1 Consultar Inscrições Ativas
+ControleEvento --> DBEventos : 4.2 Cancelar Inscrições
+ControleEvento --> DBEventos : 4.3 Cancelar Ingressos
+ControleEvento --> DBEventos : 4.4 Atualizar Status para Cancelado
+ControleEvento --> FilaNotificacoes : 4.5 Publicar Notificação de Cancelamento
+FilaNotificacoes --> WorkerNotificacoes : 4.5.1 Consumir Mensagem
+WorkerNotificacoes --> ServicoEmail : 4.5.2 Notificar Participantes Inscritos
+ServicoEmail --> Participante : 4.5.2.1 E-mail de Evento Cancelado
 
 note left of ControleEvento
   Valida disponibilidade do local

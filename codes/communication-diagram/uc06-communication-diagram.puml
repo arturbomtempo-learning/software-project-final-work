@@ -24,25 +24,26 @@ package "Notificações" {
     object ServicoEmail
 }
 
-Participante --> ControleInscricao : Solicitar Inscrição
-ControleInscricao --> ControleUsuario : Verificar Participante
-ControleUsuario --> DBUsuarios : Consultar Participante
-ControleInscricao --> ControleEvento : Verificar Disponibilidade do Evento
-ControleEvento --> DBEventos : Consultar Evento
-ControleInscricao --> DBEventos : Registrar Inscrição
-ControleInscricao --> FilaNotificacoes : Publicar Notificação de Inscrição
-FilaNotificacoes --> WorkerNotificacoes : Consumir Mensagem
-WorkerNotificacoes --> ServicoEmail : Enviar E-mails de Confirmação
-ServicoEmail --> Participante : E-mail de Confirmação de Inscrição
-ServicoEmail --> Organizador : E-mail de Nova Inscrição Recebida
+Participante --> ControleInscricao : 1. Solicitar Inscrição
+ControleInscricao --> ControleUsuario : 1.1 Verificar Participante
+ControleUsuario --> DBUsuarios : 1.1.1 Consultar Participante
+ControleInscricao --> ControleEvento : 1.2 Verificar Disponibilidade do Evento
+ControleEvento --> DBEventos : 1.2.1 Consultar Evento
+ControleInscricao --> DBEventos : 1.3 Registrar Inscrição
+ControleInscricao --> DBEventos : 1.4 Gerar Ingresso
+ControleInscricao --> FilaNotificacoes : 1.5 Publicar Notificação de Inscrição
+FilaNotificacoes --> WorkerNotificacoes : 1.4.1 Consumir Mensagem
+WorkerNotificacoes --> ServicoEmail : 1.4.2 Enviar E-mails de Confirmação
+ServicoEmail --> Participante : 1.4.2.1 E-mail de Confirmação de Inscrição
+ServicoEmail --> Organizador : 1.4.2.2 E-mail de Nova Inscrição Recebida
 
-Participante --> ControleInscricao : Cancelar Inscrição
-ControleInscricao --> DBEventos : Atualizar Status da Inscrição
-ControleInscricao --> FilaNotificacoes : Publicar Notificação de Cancelamento
-FilaNotificacoes --> WorkerNotificacoes : Consumir Mensagem
-WorkerNotificacoes --> ServicoEmail : Enviar E-mails de Cancelamento
-ServicoEmail --> Participante : E-mail de Cancelamento de Inscrição
-ServicoEmail --> Organizador : E-mail de Inscrição Cancelada
+Participante --> ControleInscricao : 2. Cancelar Inscrição
+ControleInscricao --> DBEventos : 2.1 Atualizar Status da Inscrição
+ControleInscricao --> FilaNotificacoes : 2.2 Publicar Notificação de Cancelamento
+FilaNotificacoes --> WorkerNotificacoes : 2.2.1 Consumir Mensagem
+WorkerNotificacoes --> ServicoEmail : 2.2.2 Enviar E-mails de Cancelamento
+ServicoEmail --> Participante : 2.2.2.1 E-mail de Cancelamento de Inscrição
+ServicoEmail --> Organizador : 2.2.2.2 E-mail de Inscrição Cancelada
 
 note left of ControleInscricao
   Verifica disponibilidade de vagas
