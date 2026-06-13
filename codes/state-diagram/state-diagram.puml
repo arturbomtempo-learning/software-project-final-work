@@ -1,0 +1,50 @@
+@startuml state-diagram-evento
+
+title Diagrama de Transição de Estados - Evento
+
+skinparam backgroundColor #FFFFFF
+skinparam titleFontSize 16
+skinparam titleFontStyle bold
+skinparam titleFontColor #1B5E20
+
+skinparam state {
+    BackgroundColor #E8F5E9
+    BorderColor #388E3C
+    FontSize 12
+    FontColor #1B5E20
+    ArrowColor #2E7D32
+    ArrowFontSize 11
+    ArrowFontColor #1B5E20
+}
+
+[*] --> Rascunho : cadastrar()
+
+state "Rascunho" as Rascunho
+Rascunho : entry / salvar dados do evento
+Rascunho : do / aguardar publicação pelo organizador
+
+state "Publicado" as Publicado
+Publicado : entry / habilitar exibição nos resultados de busca
+Publicado : do / manter evento disponível para inscrição
+
+state "Cancelado" as Cancelado
+Cancelado : entry / cancelar todas as inscrições ativas
+Cancelado : entry / registrar solicitação de reembolso
+Cancelado : do / notificar inscritos sobre o cancelamento
+
+state "Encerrado" as Encerrado
+Encerrado : entry / bloquear novas inscrições
+Encerrado : entry / habilitar avaliações dos participantes
+Encerrado : do / manter evento disponível para consulta
+
+Rascunho --> Publicado : publicar()\n[dados completos e local disponível]\n/ habilitar inscrições
+Rascunho --> Rascunho : editar()\n/ atualizar dados
+Rascunho --> [*] : excluir()
+
+Publicado --> Cancelado : cancelar()\n[usuário autorizado]\n/ notificar inscritos
+Publicado --> Encerrado : [dataAtual >= dataFim]\n/ encerrar inscrições
+
+Cancelado --> [*]
+Encerrado --> [*]
+
+@enduml
