@@ -1,0 +1,216 @@
+@startuml uc07-sequence-diagram
+
+autonumber
+
+title UC07 — Realizar Pagamento do Ingresso
+
+skinparam backgroundColor #FAFFFE
+
+skinparam sequence {
+    ArrowColor #1B5E20
+    ArrowFontColor #33691E
+    LifeLineBorderColor #558B2F
+    LifeLineBackgroundColor #F1F8E9
+    ParticipantBorderColor #2E7D32
+    ParticipantBackgroundColor #E8F5E9
+    ParticipantFontStyle bold
+    ActorBorderColor #2E7D32
+    ActorBackgroundColor #E8F5E9
+    GroupBorderColor #558B2F
+    GroupHeaderFontColor #1B5E20
+    GroupBackgroundColor #F9FBE7
+    BoxBorderColor #558B2F
+    BoxBackgroundColor #F9FBE7
+    DividerBorderColor #2E7D32
+    DividerBackgroundColor #C8E6C9
+    DividerFontColor #1B5E20
+}
+
+skinparam note {
+    BackgroundColor #FFFDE7
+    BorderColor #F9A825
+}
+
+skinparam database {
+    BackgroundColor #E8EAF6
+    BorderColor #283593
+}
+
+skinparam queue {
+    BackgroundColor #FFF8E1
+    BorderColor #E65100
+}
+
+actor "Participante" as Part
+
+participant "Frontend\n<<Next.js>>" as Tela
+participant "API Gateway\n<<AWS>>" as APIGW
+participant "ControleFinanceiro\n<<Financeiro Service>>" as CF
+participant "ControleInscricao\n<<Eventos Service>>" as CI
+participant "Stripe API\n<<Serviço Externo>>" as Stripe #FCE4EC ##C62828
+
+database "PostgreSQL\nFinanceiro" as DBFin
+database "PostgreSQL\nEventos" as DBEventos
+
+queue "Fila de\nConfirmações\n<<RabbitMQ>>" as QConf
+queue "Fila de\nNotificações\n<<RabbitMQ>>" as QNotif
+
+participant "Worker\nFinanceiro" as WF
+participant "Worker\nNotificações" as WN
+participant "Serviço de Email\n<<Comunicacao Service>>" as SE
+
+== Inicialização da Sessão de Pagamento ==
+
+Part -> Tela : iniciarPagamento(inscricaoID)
+activate Tela
+
+Tela -> APIGW : GET /inscricoes/{inscricaoID}/pagamento\n[Authorization: Bearer {token}]
+activate APIGW
+
+APIGW -> CF : obterSessaoPagamento(inscricaoID, participanteID)
+activate CF
+
+CF -> CI : verificarInscricaoPendente(inscricaoID)
+activate CI
+CI -> DBEventos : findInscricaoById(inscricaoID)
+activate DBEventos
+DBEventos --> CI : Inscricao{status=PENDENTE, valor, eventoID}
+deactivate DBEventos
+CI --> CF : inscricaoValida(valor, dadosEvento)
+deactivate CI
+
+CF -> DBFin : findPagamentoByInscricao(inscricaoID)
+activate DBFin
+DBFin --> CF : Pagamento{pagamentoID, status=PENDENTE, valor}
+deactivate DBFin
+
+CF --> APIGW : SessaoPagamentoDTO{pagamentoID, valor, metodosDisponiveis}
+APIGW --> Tela : 200 OK
+Tela --> Part : exibirOpcoesMetodoPagamento(valor, metodos)
+
+deactivate CF
+deactivate APIGW
+deactivate Tela
+
+== Confirmação de Ação — UC29 (<<include>>) ==
+
+Part -> Tela : selecionarMetodoEConfirmar(metodo, dadosCartao)
+activate Tela
+
+note over Part, Tela
+    UC29 — Confirmar Ação (<<include>>):
+    Sistema exibe resumo detalhado do pagamento
+    (valor, método, dados do evento e ingresso).
+    Participante revisa e confirma explicitamente
+    antes do processamento financeiro.
+end note
+
+Tela -> APIGW : POST /pagamentos/{pagamentoID}/processar\n(metodo, tokenCartao, nomePortador)
+activate APIGW
+
+APIGW -> CF : processarPagamento(pagamentoID, metodo, tokenCartao)
+activate CF
+
+CF -> DBFin : update(Pagamento{pagamentoID, metodo, status=PROCESSANDO})
+activate DBFin
+DBFin --> CF : updated()
+deactivate DBFin
+
+== Integração com Gateway de Pagamento Externo ==
+
+CF -> Stripe : POST /v1/charges\n{amount, currency="BRL", source=tokenCartao,\ndescription, metadata={pagamentoID, inscricaoID}}
+activate Stripe
+
+Stripe --> CF : ChargeResult{chargeID, status, outcome{networkStatus, reason}}
+deactivate Stripe
+
+alt Pagamento aprovado [status = "succeeded"]
+
+    CF -> DBFin : update(Pagamento{pagamentoID, status=APROVADO,\nchargeID, comprovante=chargeID, dataPagamento=now()})
+    activate DBFin
+    DBFin --> CF : updated()
+    deactivate DBFin
+
+    CF -> QConf : publish({tipo: PAGAMENTO_CONFIRMADO,\npagamentoID, inscricaoID, eventoID, participanteID})
+    activate QConf
+    QConf --> CF : ack()
+    deactivate QConf
+
+    CF --> APIGW : PagamentoAprovadoDTO{pagamentoID,\nstatus=APROVADO, comprovante, chargeID}
+    APIGW --> Tela : 200 OK
+    Tela --> Part : exibirComprovantePagamento(pagamentoID, comprovante)
+
+else Pagamento recusado [status = "failed"]
+
+    CF -> DBFin : update(Pagamento{pagamentoID, status=CANCELADO,\nmotivoRecusa=outcome.reason})
+    activate DBFin
+    DBFin --> CF : updated()
+    deactivate DBFin
+
+    CF --> APIGW : PagamentoRecusadoException{codigoErro, descricaoRecusa}
+    APIGW --> Tela : 402 Payment Required
+    Tela --> Part : exibirErroPagamento(motivoRecusa)
+
+else Timeout na comunicação com Stripe
+
+    CF -> DBFin : update(Pagamento{pagamentoID, status=PENDENTE,\nobservacao="timeout_gateway"})
+    activate DBFin
+    DBFin --> CF : updated()
+    deactivate DBFin
+
+    CF --> APIGW : StripeTimeoutException
+    APIGW --> Tela : 504 Gateway Timeout
+    Tela --> Part : exibirMensagem("Falha temporária. Tente novamente em instantes.")
+
+end
+
+deactivate CF
+deactivate APIGW
+deactivate Tela
+
+== Processamento Assíncrono — Confirmação de Inscrição ==
+
+group Fluxo Assíncrono
+
+    QConf -> WF : consumir(PAGAMENTO_CONFIRMADO)
+    activate WF
+
+    WF -> CI : confirmarInscricao(inscricaoID)
+    activate CI
+
+    CI -> DBEventos : update(Inscricao{inscricaoID, status=CONFIRMADA})
+    activate DBEventos
+    DBEventos --> CI : updated()
+    deactivate DBEventos
+
+    CI -> DBEventos : update(Ingresso{ingressoID, status=VALIDO})
+    activate DBEventos
+    DBEventos --> CI : updated()
+    deactivate DBEventos
+
+    CI -> QNotif : publish({tipo: INGRESSO_CONFIRMADO,\nparticipanteID, ingressoID, codigoIngresso, eventoID})
+    activate QNotif
+    QNotif --> CI : ack()
+    deactivate QNotif
+
+    CI --> WF : inscricaoConfirmada(codigoIngresso)
+    deactivate CI
+    deactivate WF
+
+end
+
+== Processamento Assíncrono — Envio de Ingresso por Email ==
+
+group Fluxo Assíncrono
+
+    QNotif -> WN : consumir(INGRESSO_CONFIRMADO)
+    activate WN
+    WN -> SE : enviarEmailIngressoConfirmado(participanteEmail,\ncodigoIngresso, qrCode, dadosEvento)
+    activate SE
+    SE --> WN : emailDisparado()
+    deactivate SE
+    deactivate WN
+
+end
+
+@enduml

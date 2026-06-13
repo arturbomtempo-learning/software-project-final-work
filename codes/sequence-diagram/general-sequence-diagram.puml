@@ -1,0 +1,287 @@
+@startuml general-sequence-diagram
+
+title Diagrama de Sequência Geral — Sistema de Gerenciamento de Eventos
+
+skinparam backgroundColor #FAFFFE
+
+skinparam sequence {
+    ArrowColor #1B5E20
+    ArrowFontColor #33691E
+    LifeLineBorderColor #558B2F
+    LifeLineBackgroundColor #F1F8E9
+    ParticipantBorderColor #2E7D32
+    ParticipantBackgroundColor #E8F5E9
+    ParticipantFontStyle bold
+    ActorBorderColor #2E7D32
+    ActorBackgroundColor #E8F5E9
+    GroupBorderColor #558B2F
+    GroupHeaderFontColor #1B5E20
+    GroupBackgroundColor #F9FBE7
+    BoxBorderColor #558B2F
+    BoxBackgroundColor #F9FBE7
+    DividerBorderColor #2E7D32
+    DividerBackgroundColor #C8E6C9
+    DividerFontColor #1B5E20
+    ReferenceBorderColor #2E7D32
+    ReferenceBackgroundColor #C8E6C9
+    ReferenceHeaderBackgroundColor #A5D6A7
+    ReferenceHeaderFontColor #1B5E20
+}
+
+skinparam note {
+    BackgroundColor #FFFDE7
+    BorderColor #F9A825
+}
+
+skinparam database {
+    BackgroundColor #E8EAF6
+    BorderColor #283593
+}
+
+skinparam queue {
+    BackgroundColor #FFF8E1
+    BorderColor #E65100
+}
+
+actor "Usuário\n(base)" as Usr
+actor "Participante" as Part
+actor "Organizador" as Org
+actor "Administrador" as Admin
+
+participant "Frontend\n<<Next.js>>" as Tela
+participant "API Gateway\n<<AWS>>" as APIGW
+participant "Usuarios\nService" as US
+participant "Eventos\nService" as ES
+participant "Financeiro\nService" as FS
+participant "Comunicacao\nService" as CS
+
+database "PostgreSQL\nUsuarios" as DBU
+database "PostgreSQL\nEventos" as DBE
+database "PostgreSQL\nFinanceiro" as DBF
+database "PostgreSQL\nComunicação" as DBC
+
+queue "Fila de\nPagamentos\n<<RabbitMQ>>" as QPay
+queue "Fila de\nConfirmações\n<<RabbitMQ>>" as QConf
+queue "Fila de\nNotificações\n<<RabbitMQ>>" as QNotif
+
+== Autenticação e Recuperação de Acesso ==
+
+ref over Usr, US
+    UC01 — Realizar Login
+    Usuário envia credenciais (email/senha) → Usuarios Service valida contra DB_USUARIOS
+    → retorna JWT token com perfil (Participante | Organizador | Administrador)
+end ref
+
+ref over Usr, US
+    UC02 — Recuperar Senha  (<<extend>> de UC01)
+    Usuário solicita redefinição por email → Usuarios Service gera token temporário
+    → Comunicacao Service envia link de redefinição com validade
+end ref
+
+== Pesquisa e Descoberta ==
+
+ref over Usr, ES
+    UC03 — Pesquisar Eventos Disponíveis
+    Usuário aplica filtros (categoria, data, localização, preço)
+    → Eventos Service consulta DB_EVENTOS (status=PUBLICADO) → retorna listagem paginada
+end ref
+
+ref over Usr, ES
+    UC04 — Pesquisar Locais de Entretenimento
+    Usuário busca locais por nome, endereço ou capacidade
+    → Eventos Service retorna locais com informações de disponibilidade
+end ref
+
+ref over Part, US
+    UC10 — Visualizar Perfil do Organizador  (<<extend>> de UC03)
+    Participante acessa perfil do organizador a partir de evento
+    → Usuarios Service retorna dados públicos do Organizador (biografia, site, eventos)
+end ref
+
+== Gestão de Contas ==
+
+ref over Part, US
+    UC05 — Gerenciar Conta de Participante
+    Participante cria, edita ou desativa sua conta
+    → Usuarios Service persiste em DB_USUARIOS (nome, email, CPF, dataNascimento, foto)
+end ref
+
+ref over Org, US
+    UC15 — Gerenciar Conta de Organizador
+    Organizador cria, edita ou desativa sua conta
+    → Usuarios Service persiste em DB_USUARIOS (nome, email, biografia, site)
+end ref
+
+== Favoritos ==
+
+ref over Part, ES
+    UC14 — Favoritar Eventos
+    Participante marca/desmarca eventos como favoritos → Eventos Service persiste em DB_EVENTOS
+    → Participante é notificado (via Q_NOTIF) quando evento favoritado é publicado
+end ref
+
+== Inscrição e Ingressos ==
+
+ref over Part, ES
+    UC06 — Gerenciar Inscrição no Evento  (ver diagrama detalhado)
+    Participante solicita inscrição → verifica disponibilidade e elegibilidade
+    → cria Inscricao{status=PENDENTE} + gera Ingresso{codigo=UUID}
+    → Q_NOTIF → Comunicacao Service envia email de confirmação
+end ref
+
+ref over Part, FS
+    UC07 — Realizar Pagamento do Ingresso  (ver diagrama detalhado, inclui UC29)
+    Participante escolhe método e confirma (UC29) → Financeiro Service chama Stripe API
+    → pagamento aprovado → Q_CONF → Eventos Service atualiza Inscricao=CONFIRMADA
+    → Q_NOTIF → Comunicacao Service envia ingresso por email
+end ref
+
+ref over Part, ES
+    UC09 — Visualizar Ingresso
+    Participante consulta ingresso → Eventos Service retorna
+    Ingresso{codigo, qrCode, status=VALIDO, dadosEvento}
+end ref
+
+ref over Part, ES
+    UC13 — Avaliar Evento Participado  (inclui UC29)
+    Participante avalia (nota 1–5 + comentário) após evento ENCERRADO
+    → UC29 confirma submissão → Eventos Service persiste Avaliacao em DB_EVENTOS
+    → Organizador é notificado via Q_NOTIF
+end ref
+
+ref over Part, FS
+    UC08 — Solicitar Reembolso do Ingresso  (inclui UC29)
+    Participante solicita reembolso → UC29 confirma → Financeiro Service cria
+    Reembolso{status=PENDENTE} → notifica Organizador para aprovação (UC20)
+end ref
+
+== Gestão de Eventos (Organizador) ==
+
+ref over Org, ES
+    UC16 — Gerenciar Eventos  (ver diagrama detalhado)
+    Organizador realiza CRUD de eventos: cria com status RASCUNHO
+    → edita livremente → publica (RASCUNHO→PUBLICADO) → notifica favoritos
+    → pode cancelar (PUBLICADO→CANCELADO) → notifica inscritos
+end ref
+
+ref over Org, ES
+    UC17 — Gerenciar Locais de Entretenimento
+    Organizador realiza CRUD de locais (nome, capacidade, CNPJ, endereço)
+    → Eventos Service valida CNPJ e disponibilidade → persiste em DB_EVENTOS
+end ref
+
+ref over Org, ES
+    UC18 — Visualizar Participantes do Evento
+    Organizador consulta lista de inscrições por evento
+    → Eventos Service retorna participantes com status (PENDENTE|CONFIRMADA|CANCELADA)
+end ref
+
+ref over Org, ES
+    UC19 — Visualizar Métricas dos Eventos
+    Organizador acessa dashboard → Eventos Service agrega dados:
+    total inscrições, confirmadas, pendentes, avaliação média, taxa de ocupação
+end ref
+
+ref over Org, ES
+    UC23 — Visualizar Avaliações dos Eventos
+    Organizador consulta avaliações recebidas com nota, comentário e data
+    → Eventos Service retorna listagem paginada de Avaliacao por evento
+end ref
+
+ref over Org, ES
+    UC24 — Validar Ingresso
+    Organizador escaneia QR Code do ingresso → Eventos Service valida código
+    → se Ingresso{status=VALIDO}: atualiza para UTILIZADO e libera acesso
+    → se inválido/cancelado: retorna erro
+end ref
+
+== Gestão Financeira (Organizador) ==
+
+ref over Org, FS
+    UC20 — Gerenciar Solicitações de Reembolso
+    Organizador revisa reembolsos pendentes → aprova ou rejeita
+    → Financeiro Service processa reembolso via Stripe (se aprovado)
+    → Q_NOTIF → Comunicacao Service notifica participante
+end ref
+
+ref over Org, FS
+    UC22 — Consultar Comprovantes de Pagamento
+    Organizador acessa histórico de pagamentos do evento
+    → Financeiro Service retorna Pagamento{valor, metodo, status, comprovante}
+end ref
+
+== Comunicação (Organizador / Participante) ==
+
+ref over Part, CS
+    UC11 — Enviar Dúvida para o Organizador do Evento
+    Participante envia dúvida sobre evento → Comunicacao Service persiste Duvida{status=PENDENTE}
+    → Q_NOTIF notifica Organizador para responder
+end ref
+
+ref over Org, CS
+    UC21 — Responder Dúvidas dos Participantes
+    Organizador acessa dúvidas pendentes e responde → Comunicacao Service
+    → atualiza Duvida{status=RESPONDIDA} → Q_NOTIF notifica Participante com resposta
+end ref
+
+ref over Part, CS
+    UC12 — Fornecer Feedback sobre a Plataforma
+    Participante envia feedback → Comunicacao Service persiste Feedback{status=NOVO}
+    → Q_NOTIF notifica Administrador para revisão
+end ref
+
+== Administração ==
+
+ref over Admin, ES
+    UC25 — Gerenciar Categorias de Eventos
+    Administrador realiza CRUD de categorias (ex: Música, Tecnologia, Esportes)
+    → Eventos Service valida unicidade do nome → persiste Categoria em DB_EVENTOS
+end ref
+
+ref over Admin, US
+    UC26 — Gerenciar Acesso de Organizadores
+    Administrador aprova, bloqueia ou remove organizadores da plataforma
+    → Usuarios Service atualiza status do Organizador em DB_USUARIOS
+    → Comunicacao Service notifica organizador sobre decisão
+end ref
+
+ref over Admin, ES
+    UC27 — Moderar Eventos
+    Administrador revisa eventos publicados → pode cancelar eventos que violam políticas
+    → Eventos Service atualiza status=CANCELADO → Q_NOTIF notifica inscritos e organizador
+end ref
+
+ref over Admin, CS
+    UC28 — Visualizar Feedbacks sobre a Plataforma
+    Administrador consulta e arquiva feedbacks de participantes
+    → Comunicacao Service retorna Feedback{conteudo, status} → atualiza para ARQUIVADO
+end ref
+
+== Ação Comum de Confirmação ==
+
+note over Part, FS
+    UC29 — Confirmar Ação (<<include>>)
+    Acionado em: UC07 (Realizar Pagamento), UC08 (Solicitar Reembolso), UC13 (Avaliar Evento).
+    Sistema exibe resumo completo da operação antes de processar.
+    Participante revisa os dados e confirma explicitamente — sem confirmação, não há execução.
+end note
+
+== Fluxo Assíncrono de Mensageria — RabbitMQ ==
+
+group Mensageria — Processamento Assíncrono entre Microserviços
+
+    ES -> QPay : publish(NOVA_INSCRICAO_PENDENTE)\nEventos Service notifica Financeiro sobre inscrição aguardando pagamento
+
+    QPay -> FS : consumir(NOVA_INSCRICAO_PENDENTE)\nFinanceiro Service aguarda processamento do pagamento via Stripe
+
+    FS -> QConf : publish(PAGAMENTO_CONFIRMADO)\nFinanceiro informa aprovação do pagamento após retorno do Stripe
+
+    QConf -> ES : consumir(PAGAMENTO_CONFIRMADO)\nEventos Service atualiza Inscricao=CONFIRMADA e Ingresso=VALIDO
+
+    ES -> QNotif : publish(NOTIFICACAO_EVENTO)\nEventos publica notificações: inscrição criada, cancelada, evento publicado/cancelado
+
+    QNotif -> CS : consumir(NOTIFICACAO_EVENTO)\nComunicacao Service envia emails transacionais e notificações push ao participante
+
+end
+
+@enduml
