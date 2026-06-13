@@ -52,7 +52,7 @@ participant "ControleLocal" as CL
 participant "ControleCategoria" as CC
 
 database "PostgreSQL\nEventos" as DBEventos
-database "PostgreSQL\nUsuarios" as DBUsuarios
+database "PostgreSQL\nUsuários" as DBUsuarios
 
 queue "Fila de\nNotificações" as QNotif
 
@@ -233,12 +233,11 @@ group Fluxo Assíncrono — Notificação de Publicação
 
     QNotif -> WN : consumirMensagem()
     activate WN
-    WN -> SE : notificarParticipantesInteressados(listaEmails, dadosEvento)
+    WN ->> SE : notificarParticipantesInteressados(listaEmails, dadosEvento)
+    deactivate WN
     activate SE
     SE ->> Part : emailEventoPublicado()
-    SE --> WN : emailsEnviados()
     deactivate SE
-    deactivate WN
 
 end
 
@@ -300,12 +299,11 @@ group Fluxo Assíncrono — Notificação de Cancelamento
 
     QNotif -> WN : consumirMensagem()
     activate WN
-    WN -> SE : notificarParticipantesEventoCancelado(listaEmails, motivo, dadosEvento)
+    WN ->> SE : notificarParticipantesEventoCancelado(listaEmails, motivo, dadosEvento)
+    deactivate WN
     activate SE
     SE ->> Part : emailEventoCancelado(motivo)
-    SE --> WN : emailsEnviados()
     deactivate SE
-    deactivate WN
 
 end
 

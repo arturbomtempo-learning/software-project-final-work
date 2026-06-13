@@ -112,7 +112,7 @@ iDB2 -down- DB2
 iDB3 -down- DB3
 iDB4 -down- DB4
 
-rectangle "AWS EC2 — Mensageria" as EC2 #FFF8E1 {
+rectangle "AWS EC2 Instance" as EC2 #FFF8E1 {
     [RabbitMQ Broker] as RABBIT
     queue "Fila de\nPagamentos"   as Q_PAY
     queue "Fila de\nConfirmações" as Q_CONF
@@ -126,14 +126,19 @@ Q_CONF --> EVENTS  : AMQP
 EVENTS --> Q_NOTIF : AMQP
 Q_NOTIF --> COMM   : AMQP
 
-rectangle "Stripe (Serviço Externo)" as EXT #FCE4EC {
+rectangle "Serviços Externos" as EXT #FCE4EC {
     [Stripe API] as STRIPE
+    [AWS SES\n<<Email API>>] as SES
 }
 
 interface "HTTPS" as iSTRIPE
+interface "HTTPS" as iSES
 
 STRIPE  -left- iSTRIPE
 FIN    --( iSTRIPE : HTTPS
+
+SES    -right- iSES
+COMM   --( iSES   : HTTPS
 
 rectangle "AWS CloudWatch" as CW #ECEFF1 {
     [Logs e Monitoramento] as CLOUDWATCH

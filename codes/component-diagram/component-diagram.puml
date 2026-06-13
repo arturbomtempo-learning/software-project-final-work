@@ -100,8 +100,8 @@ rectangle "Mensageria — RabbitMQ (AWS EC2)" as MQ #FFF8E1 {
     queue "Fila de\nNotificações" as Q_NOTIF
 }
 
-EVENTS --> Q_PAY   : AMQP
-Q_PAY  --> FIN     : AMQP
+EVENTS --> RABBIT   : AMQP
+RABBIT  --> FIN     : AMQP
 FIN    --> Q_CONF  : AMQP
 Q_CONF --> EVENTS  : AMQP
 EVENTS --> Q_NOTIF : AMQP
@@ -109,12 +109,17 @@ Q_NOTIF --> COMM   : AMQP
 
 rectangle "Serviços Externos" as EXT #FCE4EC {
     [Stripe API] as STRIPE
+    [AWS SES\n<<Email API>>] as SES
 }
 
 interface "HTTPS" as iSTRIPE
+interface "HTTPS" as iSES
 
 STRIPE  -left- iSTRIPE
 FIN    --( iSTRIPE : HTTPS
+
+SES    -right- iSES
+COMM   --( iSES   : HTTPS
 
 USERS  -[hidden]right- EVENTS
 EVENTS -[hidden]right- FIN

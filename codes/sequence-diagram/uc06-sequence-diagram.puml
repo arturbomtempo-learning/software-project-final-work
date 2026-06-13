@@ -51,7 +51,7 @@ participant "ControleEvento" as CE
 participant "ControleUsuario" as CU
 
 database "PostgreSQL\nEventos" as DBEventos
-database "PostgreSQL\nUsuarios" as DBUsuarios
+database "PostgreSQL\nUsuários" as DBUsuarios
 
 queue "Fila de\nNotificações" as QNotif
 
@@ -143,13 +143,12 @@ group Fluxo Assíncrono
 
     QNotif -> WN : consumirMensagem()
     activate WN
-    WN -> SE : enviarEmailsInscricaoCriada(participanteEmail, organizadorEmail,\ndadosEvento, codigoIngresso)
+    WN ->> SE : enviarEmailsInscricaoCriada(participanteEmail, organizadorEmail,\ndadosEvento, codigoIngresso)
+    deactivate WN
     activate SE
     SE ->> Part : emailConfirmacaoInscricao()
     SE ->> Org : emailNovaInscricaoRecebida()
-    SE --> WN : emailsEnviados()
     deactivate SE
-    deactivate WN
 
 end
 
@@ -206,13 +205,12 @@ group Fluxo Assíncrono — Notificação de Cancelamento
 
     QNotif -> WN : consumirMensagem()
     activate WN
-    WN -> SE : enviarEmailCancelamento(participanteEmail, organizadorEmail, dadosEvento)
+    WN ->> SE : enviarEmailCancelamento(participanteEmail, organizadorEmail, dadosEvento)
+    deactivate WN
     activate SE
     SE ->> Part : emailCancelamentoInscricao()
     SE ->> Org : emailInscricaoCancelada()
-    SE --> WN : emailsEnviados()
     deactivate SE
-    deactivate WN
 
 end
 

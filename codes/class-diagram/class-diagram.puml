@@ -1,4 +1,4 @@
-@startuml
+@startuml class-diagram
 
 skinparam classAttributeIconSize 0
 
@@ -251,6 +251,33 @@ package "Comunicação" {
         VISUALIZADO
         ARQUIVADO
     }
+
+    class Notificacao {
+        - tipo: TipoNotificacao
+        - assunto: String
+        - status: StatusNotificacao
+
+        + reenviar()
+    }
+
+    enum TipoNotificacao {
+        INSCRICAO_CRIADA
+        INSCRICAO_CANCELADA
+        PAGAMENTO_CONFIRMADO
+        INGRESSO_CONFIRMADO
+        EVENTO_PUBLICADO
+        EVENTO_CANCELADO
+        REEMBOLSO_APROVADO
+        NOVA_DUVIDA
+        DUVIDA_RESPONDIDA
+        NOVO_FEEDBACK
+    }
+
+    enum StatusNotificacao {
+        PENDENTE
+        ENVIADA
+        FALHOU
+    }
 }
 
 Usuario <|-- Participante
@@ -259,6 +286,7 @@ Usuario <|-- Administrador
 
 Mensagem <|-- Duvida
 Mensagem <|-- Feedback
+Mensagem <|-- Notificacao
 
 Participante "1" -- "0..*" Inscricao
 Participante "1" -- "0..*" Duvida
@@ -271,6 +299,8 @@ Organizador "1" -- "0..*" Local
 Organizador "1" -- "0..*" Duvida
 
 Administrador "1" -- "0..*" Feedback
+
+Usuario "1" -- "0..*" Notificacao
 
 Evento "1" -- "0..*" Inscricao
 Evento "1" -- "0..*" Avaliacao

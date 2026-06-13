@@ -55,7 +55,7 @@ participant "Eventos\nService" as ES
 participant "Financeiro\nService" as FS
 participant "Comunicacao\nService" as CS
 
-database "PostgreSQL\nUsuarios" as DBU
+database "PostgreSQL\nUsuários" as DBU
 database "PostgreSQL\nEventos" as DBE
 database "PostgreSQL\nFinanceiro" as DBF
 database "PostgreSQL\nComunicação" as DBC

@@ -205,12 +205,11 @@ group Fluxo Assíncrono
 
     QNotif -> WN : consumirMensagem()
     activate WN
-    WN -> SE : enviarEmailIngressoConfirmado(participanteEmail, codigoIngresso, qrCode, dadosEvento)
+    WN ->> SE : enviarEmailIngressoConfirmado(participanteEmail, codigoIngresso, qrCode, dadosEvento)
+    deactivate WN
     activate SE
     SE ->> Part : emailIngressoConfirmado()
-    SE --> WN : emailEnviado()
     deactivate SE
-    deactivate WN
 
 end
 
