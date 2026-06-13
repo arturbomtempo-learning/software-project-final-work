@@ -2,7 +2,7 @@
 
 autonumber
 
-title UC06 — Gerenciar Inscrição no Evento
+title UC06 - Gerenciar Inscrição no Evento
 
 skinparam backgroundColor #FAFFFE
 
@@ -24,11 +24,6 @@ skinparam sequence {
     DividerBorderColor #2E7D32
     DividerBackgroundColor #C8E6C9
     DividerFontColor #1B5E20
-}
-
-skinparam note {
-    BackgroundColor #FFFDE7
-    BorderColor #F9A825
 }
 
 skinparam database {
@@ -99,18 +94,12 @@ alt Evento disponível e participante elegível
     DBEventos --> CI : inscricaoCriada(inscricaoID)
     deactivate DBEventos
 
-    CI -> DBEventos : salvarIngresso(inscricaoID, codigo, dataEmissao, status=VALIDO)
+    CI -> DBEventos : salvarIngresso(inscricaoID, codigo, dataEmissao, status=PENDENTE)
     activate DBEventos
     DBEventos --> CI : ingressoCriado(ingressoID, codigoIngresso)
     deactivate DBEventos
 
-    note right of CI
-        Inscrição criada com status PENDENTE.
-        Aguarda confirmação do pagamento (UC07).
-        Ingresso gerado com código único (UUID).
-    end note
-
-    CI -> QNotif : publicarNotificacao(INSCRICAO_CRIADA, participanteID, eventoID, ingressoID)
+    CI ->> QNotif : publicarNotificacao(INSCRICAO_CRIADA, participanteID, eventoID, ingressoID)
     activate QNotif
     QNotif --> CI : mensagemPublicada()
     deactivate QNotif
@@ -137,20 +126,14 @@ deactivate CI
 deactivate APIGW
 deactivate Tela
 
-== Processamento Assíncrono — Notificação de Inscrição ==
-
-group Fluxo Assíncrono
-
-    QNotif -> WN : consumirMensagem()
-    activate WN
-    WN ->> SE : enviarEmailsInscricaoCriada(participanteEmail, organizadorEmail,\ndadosEvento, codigoIngresso)
-    deactivate WN
-    activate SE
-    SE ->> Part : emailConfirmacaoInscricao()
-    SE ->> Org : emailNovaInscricaoRecebida()
-    deactivate SE
-
-end
+QNotif ->> WN : consumirMensagem()
+activate WN
+WN ->> SE : enviarEmailsInscricaoCriada(participanteEmail, organizadorEmail,\ndadosEvento, codigoIngresso)
+deactivate WN
+activate SE
+SE ->> Part : emailConfirmacaoInscricao()
+SE ->> Org : emailNovaInscricaoRecebida()
+deactivate SE
 
 == Cancelamento de Inscrição ==
 
@@ -168,16 +151,6 @@ activate DBEventos
 DBEventos --> CI : inscricaoEncontrada(status, ingressoID, eventoID)
 deactivate DBEventos
 
-opt Inscrição com status CONFIRMADA (pagamento já realizado)
-
-    note right of CI
-        Cancelamento de inscrição confirmada
-        requer solicitação de reembolso (UC08).
-        Apenas inscrições PENDENTE são canceláveis aqui.
-    end note
-
-end
-
 CI -> DBEventos : atualizarInscricao(inscricaoID, status=CANCELADA)
 activate DBEventos
 DBEventos --> CI : inscricaoAtualizada()
@@ -188,7 +161,7 @@ activate DBEventos
 DBEventos --> CI : ingressoAtualizado()
 deactivate DBEventos
 
-CI -> QNotif : publicarNotificacao(INSCRICAO_CANCELADA, participanteID, eventoID, inscricaoID)
+CI ->> QNotif : publicarNotificacao(INSCRICAO_CANCELADA, participanteID, eventoID, inscricaoID)
 activate QNotif
 QNotif --> CI : mensagemPublicada()
 deactivate QNotif
@@ -201,17 +174,13 @@ deactivate CI
 deactivate APIGW
 deactivate Tela
 
-group Fluxo Assíncrono — Notificação de Cancelamento
-
-    QNotif -> WN : consumirMensagem()
-    activate WN
-    WN ->> SE : enviarEmailCancelamento(participanteEmail, organizadorEmail, dadosEvento)
-    deactivate WN
-    activate SE
-    SE ->> Part : emailCancelamentoInscricao()
-    SE ->> Org : emailInscricaoCancelada()
-    deactivate SE
-
-end
+QNotif ->> WN : consumirMensagem()
+activate WN
+WN ->> SE : enviarEmailCancelamento(participanteEmail, organizadorEmail, dadosEvento)
+deactivate WN
+activate SE
+SE ->> Part : emailCancelamentoInscricao()
+SE ->> Org : emailInscricaoCancelada()
+deactivate SE
 
 @enduml

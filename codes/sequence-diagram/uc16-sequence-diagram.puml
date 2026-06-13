@@ -2,7 +2,7 @@
 
 autonumber
 
-title UC16 — Gerenciar Eventos
+title UC16 - Gerenciar Eventos
 
 skinparam backgroundColor #FAFFFE
 
@@ -24,11 +24,6 @@ skinparam sequence {
     DividerBorderColor #2E7D32
     DividerBackgroundColor #C8E6C9
     DividerFontColor #1B5E20
-}
-
-skinparam note {
-    BackgroundColor #FFFDE7
-    BorderColor #F9A825
 }
 
 skinparam database {
@@ -130,12 +125,6 @@ alt Dados válidos e local disponível
     DBEventos --> CE : eventoCriado(eventoID)
     deactivate DBEventos
 
-    note right of CE
-        Evento salvo com status RASCUNHO.
-        O organizador pode editar livremente
-        antes de publicar para os participantes.
-    end note
-
     CE --> APIGW : eventoCriado(eventoID, status=RASCUNHO)
     APIGW --> Tela : eventoCriado(eventoID)
     Tela --> Org : exibirEventoCriado(eventoID, status=RASCUNHO)
@@ -216,7 +205,7 @@ activate DBEventos
 DBEventos --> CE : favoritosEncontrados(participantesInteressados)
 deactivate DBEventos
 
-CE -> QNotif : publicarNotificacao(EVENTO_PUBLICADO, eventoID, titulo, participantesInteressados)
+CE ->> QNotif : publicarNotificacao(EVENTO_PUBLICADO, eventoID, titulo, participantesInteressados)
 activate QNotif
 QNotif --> CE : mensagemPublicada()
 deactivate QNotif
@@ -229,17 +218,13 @@ deactivate CE
 deactivate APIGW
 deactivate Tela
 
-group Fluxo Assíncrono — Notificação de Publicação
-
-    QNotif -> WN : consumirMensagem()
-    activate WN
-    WN ->> SE : notificarParticipantesInteressados(listaEmails, dadosEvento)
-    deactivate WN
-    activate SE
-    SE ->> Part : emailEventoPublicado()
-    deactivate SE
-
-end
+QNotif ->> WN : consumirMensagem()
+activate WN
+WN ->> SE : notificarParticipantesInteressados(listaEmails, dadosEvento)
+deactivate WN
+activate SE
+SE ->> Part : emailEventoPublicado()
+deactivate SE
 
 == Cancelamento de Evento ==
 
@@ -263,12 +248,15 @@ DBEventos --> CE : inscricoesEncontradas(confirmadas, pendentes, totalInscritos)
 deactivate DBEventos
 
 loop Para cada inscrição ativa
-
     CE -> DBEventos : atualizarInscricao(inscricaoID, status=CANCELADA)
     activate DBEventos
     DBEventos --> CE : inscricaoAtualizada()
     deactivate DBEventos
 
+    CE -> DBEventos : atualizarIngresso(ingressoID, status=CANCELADO)
+    activate DBEventos
+    DBEventos --> CE : ingressoAtualizado()
+    deactivate DBEventos
 end
 
 CE -> DBEventos : atualizarEvento(eventoID, status=CANCELADO)
@@ -276,13 +264,7 @@ activate DBEventos
 DBEventos --> CE : eventoAtualizado()
 deactivate DBEventos
 
-note right of CE
-    Inscrições com status CONFIRMADA
-    devem ter reembolso processado
-    pelo Financeiro Service (UC20).
-end note
-
-CE -> QNotif : publicarNotificacao(EVENTO_CANCELADO, eventoID, motivo, qtdInscritos)
+CE ->> QNotif : publicarNotificacao(EVENTO_CANCELADO, eventoID, motivo, qtdInscritos)
 activate QNotif
 QNotif --> CE : mensagemPublicada()
 deactivate QNotif
@@ -295,16 +277,12 @@ deactivate CE
 deactivate APIGW
 deactivate Tela
 
-group Fluxo Assíncrono — Notificação de Cancelamento
-
-    QNotif -> WN : consumirMensagem()
-    activate WN
-    WN ->> SE : notificarParticipantesEventoCancelado(listaEmails, motivo, dadosEvento)
-    deactivate WN
-    activate SE
-    SE ->> Part : emailEventoCancelado(motivo)
-    deactivate SE
-
-end
+QNotif ->> WN : consumirMensagem()
+activate WN
+WN ->> SE : notificarParticipantesEventoCancelado(listaEmails, motivo, dadosEvento)
+deactivate WN
+activate SE
+SE ->> Part : emailEventoCancelado(motivo)
+deactivate SE
 
 @enduml

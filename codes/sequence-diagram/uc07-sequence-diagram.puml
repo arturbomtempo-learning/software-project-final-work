@@ -2,7 +2,7 @@
 
 autonumber
 
-title UC07 — Realizar Pagamento do Ingresso
+title UC07 - Realizar Pagamento do Ingresso
 
 skinparam backgroundColor #FAFFFE
 
@@ -24,11 +24,6 @@ skinparam sequence {
     DividerBorderColor #2E7D32
     DividerBackgroundColor #C8E6C9
     DividerFontColor #1B5E20
-}
-
-skinparam note {
-    BackgroundColor #FFFDE7
-    BorderColor #F9A825
 }
 
 skinparam database {
@@ -92,18 +87,10 @@ deactivate CF
 deactivate APIGW
 deactivate Tela
 
-== Confirmação de Ação — UC29 (include) ==
+== Confirmação de Ação - UC29 (include) ==
 
 Part -> Tela : selecionarMetodoEConfirmar(metodo, dadosCartao)
 activate Tela
-
-note over Part, Tela
-    UC29 — Confirmar Ação (include):
-    Sistema exibe resumo detalhado do pagamento
-    (valor, método, dados do evento e ingresso).
-    Participante revisa e confirma explicitamente
-    antes do processamento financeiro.
-end note
 
 Tela -> APIGW : processarPagamento(pagamentoID, metodo, dadosCartao)
 activate APIGW
@@ -131,7 +118,7 @@ alt Pagamento aprovado pelo Stripe
     DBFin --> CF : pagamentoAtualizado()
     deactivate DBFin
 
-    CF -> QConf : publicarConfirmacao(PAGAMENTO_CONFIRMADO, inscricaoID, participanteID)
+    CF ->> QConf : publicarConfirmacao(PAGAMENTO_CONFIRMADO, inscricaoID, participanteID)
     activate QConf
     QConf --> CF : mensagemPublicada()
     deactivate QConf
@@ -168,49 +155,37 @@ deactivate CF
 deactivate APIGW
 deactivate Tela
 
-== Processamento Assíncrono — Confirmação de Inscrição ==
+QConf ->> WF : consumirMensagem()
+activate WF
 
-group Fluxo Assíncrono
+WF ->> CI : confirmarInscricao(inscricaoID)
+activate CI
 
-    QConf -> WF : consumirMensagem()
-    activate WF
+CI -> DBEventos : atualizarInscricao(inscricaoID, status=CONFIRMADA)
+activate DBEventos
+DBEventos --> CI : inscricaoAtualizada()
+deactivate DBEventos
 
-    WF -> CI : confirmarInscricao(inscricaoID)
-    activate CI
+CI -> DBEventos : atualizarIngresso(ingressoID, status=VALIDO)
+activate DBEventos
+DBEventos --> CI : ingressoAtualizado()
+deactivate DBEventos
 
-    CI -> DBEventos : atualizarInscricao(inscricaoID, status=CONFIRMADA)
-    activate DBEventos
-    DBEventos --> CI : inscricaoAtualizada()
-    deactivate DBEventos
+CI ->> QNotif : publicarNotificacao(INGRESSO_CONFIRMADO, participanteID, ingressoID, codigoIngresso)
+activate QNotif
+QNotif --> CI : mensagemPublicada()
+deactivate QNotif
 
-    CI -> DBEventos : atualizarIngresso(ingressoID, status=VALIDO)
-    activate DBEventos
-    DBEventos --> CI : ingressoAtualizado()
-    deactivate DBEventos
+CI --> WF : inscricaoConfirmada(codigoIngresso)
+deactivate CI
+deactivate WF
 
-    CI -> QNotif : publicarNotificacao(INGRESSO_CONFIRMADO, participanteID, ingressoID, codigoIngresso)
-    activate QNotif
-    QNotif --> CI : mensagemPublicada()
-    deactivate QNotif
-
-    CI --> WF : inscricaoConfirmada(codigoIngresso)
-    deactivate CI
-    deactivate WF
-
-end
-
-== Processamento Assíncrono — Envio de Ingresso por Email ==
-
-group Fluxo Assíncrono
-
-    QNotif -> WN : consumirMensagem()
-    activate WN
-    WN ->> SE : enviarEmailIngressoConfirmado(participanteEmail, codigoIngresso, qrCode, dadosEvento)
-    deactivate WN
-    activate SE
-    SE ->> Part : emailIngressoConfirmado()
-    deactivate SE
-
-end
+QNotif ->> WN : consumirMensagem()
+activate WN
+WN ->> SE : enviarEmailIngressoConfirmado(participanteEmail, codigoIngresso, qrCode, dadosEvento)
+deactivate WN
+activate SE
+SE ->> Part : emailIngressoConfirmado()
+deactivate SE
 
 @enduml

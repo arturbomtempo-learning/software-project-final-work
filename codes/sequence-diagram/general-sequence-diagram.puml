@@ -1,6 +1,6 @@
 @startuml general-sequence-diagram
 
-title Diagrama de Sequência Geral — Sistema de Gerenciamento de Eventos
+title Diagrama de Sequência Geral - Sistema de Gerenciamento de Eventos
 
 skinparam backgroundColor #FAFFFE
 
@@ -26,11 +26,6 @@ skinparam sequence {
     ReferenceBackgroundColor #C8E6C9
     ReferenceHeaderBackgroundColor #A5D6A7
     ReferenceHeaderFontColor #1B5E20
-}
-
-skinparam note {
-    BackgroundColor #FFFDE7
-    BorderColor #F9A825
 }
 
 skinparam database {
@@ -66,114 +61,92 @@ queue "Fila de\nNotificações" as QNotif
 
 == Autenticação e Recuperação de Acesso ==
 
-ref over Usr, Tela, APIGW, US : UC01 — Realizar Login
+ref over Usr, Tela, APIGW, US : UC01 - Realizar Login
 
-ref over Usr, Tela, APIGW, US : UC02 — Recuperar Senha (extend de UC01)
+ref over Usr, Tela, APIGW, US : UC02 - Recuperar Senha (extend de UC01)
 
 == Pesquisa e Descoberta ==
 
-ref over Usr, Tela, APIGW, ES : UC03 — Pesquisar Eventos Disponíveis
+ref over Usr, Tela, APIGW, ES : UC03 - Pesquisar Eventos Disponíveis
 
-ref over Usr, Tela, APIGW, ES : UC04 — Pesquisar Locais de Entretenimento
+ref over Usr, Tela, APIGW, ES : UC04 - Pesquisar Locais de Entretenimento
 
-ref over Part, Tela, APIGW, US : UC10 — Visualizar Perfil do Organizador (extend de UC03)
+ref over Part, Tela, APIGW, ES, US : UC10 - Visualizar Perfil do Organizador (extend de UC03)
 
 == Gestão de Contas ==
 
-ref over Part, Tela, APIGW, US : UC05 — Gerenciar Conta de Participante
+ref over Part, Tela, APIGW, US : UC05 - Gerenciar Conta de Participante
 
-ref over Org, Tela, APIGW, US : UC15 — Gerenciar Conta de Organizador
+ref over Org, Tela, APIGW, US : UC15 - Gerenciar Conta de Organizador
 
 == Favoritos ==
 
-ref over Part, Tela, APIGW, ES : UC14 — Favoritar Eventos
+ref over Part, Tela, APIGW, ES : UC14 - Favoritar Eventos
 
 == Inscrição e Ingressos ==
 
-ref over Part, Tela, APIGW, ES : UC06 — Gerenciar Inscrição no Evento (ver diagrama detalhado)
+ref over Part, Tela, APIGW, ES : UC06 - Gerenciar Inscrição no Evento (ver diagrama detalhado)
 
-ref over Part, Tela, APIGW, FS : UC07 — Realizar Pagamento do Ingresso (ver diagrama detalhado, inclui UC29)
+ref over Part, Tela, APIGW, FS : UC07 - Realizar Pagamento do Ingresso (inclui UC29)
 
-ref over Part, Tela, APIGW, ES : UC09 — Visualizar Ingresso
+ref over Part, Tela, APIGW, ES : UC09 - Visualizar Ingresso
 
-ref over Part, Tela, APIGW, ES : UC13 — Avaliar Evento Participado (inclui UC29)
+ref over Part, Tela, APIGW, ES : UC13 - Avaliar Evento Participado (inclui UC29)
 
-ref over Part, Tela, APIGW, FS : UC08 — Solicitar Reembolso do Ingresso (inclui UC29)
+ref over Part, Tela, APIGW, FS : UC08 - Solicitar Reembolso do Ingresso (inclui UC29)
 
 == Gestão de Eventos (Organizador) ==
 
-ref over Org, Tela, APIGW, ES : UC16 — Gerenciar Eventos (ver diagrama detalhado)
+ref over Org, Tela, APIGW, ES : UC16 - Gerenciar Eventos (ver diagrama detalhado)
 
-ref over Org, Tela, APIGW, ES : UC17 — Gerenciar Locais de Entretenimento
+ref over Org, Tela, APIGW, ES : UC17 - Gerenciar Locais de Entretenimento
 
-ref over Org, Tela, APIGW, ES : UC18 — Visualizar Participantes do Evento
+ref over Org, Tela, APIGW, ES : UC18 - Visualizar Participantes do Evento
 
-ref over Org, Tela, APIGW, ES : UC19 — Visualizar Métricas dos Eventos
+ref over Org, Tela, APIGW, ES : UC19 - Visualizar Métricas dos Eventos
 
-ref over Org, Tela, APIGW, ES : UC23 — Visualizar Avaliações dos Eventos
+ref over Org, Tela, APIGW, ES : UC23 - Visualizar Avaliações dos Eventos
 
-ref over Org, Tela, APIGW, ES : UC24 — Validar Ingresso
+ref over Org, Tela, APIGW, ES : UC24 - Validar Ingresso
 
 == Gestão Financeira (Organizador) ==
 
-ref over Org, Tela, APIGW, FS : UC20 — Gerenciar Solicitações de Reembolso
+ref over Org, Tela, APIGW, FS : UC20 - Gerenciar Solicitações de Reembolso
 
-ref over Org, Tela, APIGW, FS : UC22 — Consultar Comprovantes de Pagamento
+ref over Org, Tela, APIGW, FS : UC22 - Consultar Comprovantes de Pagamento
 
 == Comunicação (Organizador / Participante) ==
 
-ref over Part, Tela, APIGW, CS : UC11 — Enviar Dúvida para o Organizador do Evento
+ref over Part, Tela, APIGW, CS : UC11 - Enviar Dúvida para o Organizador do Evento
 
-ref over Org, Tela, APIGW, CS : UC21 — Responder Dúvidas dos Participantes
+ref over Org, Tela, APIGW, CS : UC21 - Responder Dúvidas dos Participantes
 
-ref over Part, Tela, APIGW, CS : UC12 — Fornecer Feedback sobre a Plataforma
+ref over Part, Tela, APIGW, CS : UC12 - Fornecer Feedback sobre a Plataforma
 
 == Administração ==
 
-ref over Admin, Tela, APIGW, ES : UC25 — Gerenciar Categorias de Eventos
+ref over Admin, Tela, APIGW, ES : UC25 - Gerenciar Categorias de Eventos
 
-ref over Admin, Tela, APIGW, US : UC26 — Gerenciar Acesso de Organizadores
+ref over Admin, Tela, APIGW, US : UC26 - Gerenciar Acesso de Organizadores
 
-ref over Admin, Tela, APIGW, ES : UC27 — Moderar Eventos
+ref over Admin, Tela, APIGW, ES : UC27 - Moderar Eventos
 
-ref over Admin, Tela, APIGW, CS : UC28 — Visualizar Feedbacks sobre a Plataforma
+ref over Admin, Tela, APIGW, CS : UC28 - Visualizar Feedbacks sobre a Plataforma
 
-== Ação Comum de Confirmação ==
+QPay ->> FS : consumirMensagem()
+activate FS
+FS ->> QConf : publicarResultadoPagamento(inscricaoID, status)
+deactivate FS
 
-note over Part, FS
-    UC29 — Confirmar Ação (include)
-    Acionado em: UC07 (Realizar Pagamento), UC08 (Solicitar Reembolso), UC13 (Avaliar Evento).
-    Sistema exibe resumo completo da operação antes de processar.
-    Participante revisa os dados e confirma explicitamente.
-end note
+QConf ->> ES : consumirMensagem()
+activate ES
+ES ->> QNotif : publicarNotificacao(participanteID, tipoNotificacao)
+deactivate ES
 
-== Fluxo Assíncrono de Mensageria — RabbitMQ ==
-
-group Fluxo Assíncrono — Fila de Pagamentos
-
-    QPay -> FS : consumirMensagem()
-    activate FS
-    FS ->> QConf : publicarResultadoPagamento(inscricaoID, status)
-    deactivate FS
-
-end
-
-group Fluxo Assíncrono — Fila de Confirmações
-
-    QConf -> ES : consumirMensagem()
-    activate ES
-    ES ->> QNotif : publicarNotificacao(participanteID, tipoNotificacao)
-    deactivate ES
-
-end
-
-group Fluxo Assíncrono — Fila de Notificações
-
-    QNotif -> CS : consumirMensagem()
-    activate CS
-    CS ->> Part : enviarEmailTransacional()
-    deactivate CS
-
-end
+QNotif ->> CS : consumirMensagem()
+activate CS
+CS ->> Part : enviarEmailTransacional()
+CS ->> Org : enviarEmailTransacional()
+deactivate CS
 
 @enduml

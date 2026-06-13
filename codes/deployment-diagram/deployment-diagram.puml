@@ -41,13 +41,13 @@ rectangle "Vercel" as VERCEL #F9FBE7 {
 
 WEB --> FRONT : HTTPS
 
-rectangle "AWS — API Gateway" as AWSGW #E0F7FA {
+rectangle "AWS - API Gateway" as AWSGW #E0F7FA {
     [API Gateway\n<<Amazon>>] as APIGW
 }
 
 FRONT --> APIGW : HTTPS
 
-rectangle "AWS — Application Load Balancer" as AWSALB #F3E5F5 {
+rectangle "AWS - Application Load Balancer" as AWSALB #F3E5F5 {
     [Load Balancer\n<<ALB>>] as ALB
 }
 

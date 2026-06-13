@@ -93,7 +93,7 @@ iDB2 -down- DB2
 iDB3 -down- DB3
 iDB4 -down- DB4
 
-rectangle "Mensageria — RabbitMQ (AWS EC2)" as MQ #FFF8E1 {
+rectangle "Mensageria - RabbitMQ (AWS EC2)" as MQ #FFF8E1 {
     [RabbitMQ Broker] as RABBIT
     queue "Fila de\nPagamentos"   as Q_PAY
     queue "Fila de\nConfirmações" as Q_CONF
