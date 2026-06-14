@@ -27,8 +27,6 @@
 ![Licença](https://img.shields.io/badge/Licença-MIT-007ec6?style=for-the-badge&logo=opensourceinitiative&logoColor=white)
 ![Versão](https://img.shields.io/badge/Versão-v1.0.0-007ec6?style=for-the-badge)
 ![UML](https://img.shields.io/badge/Modelagem-UML%202.5-007ec6?style=for-the-badge&logo=uml&logoColor=white)
-![GitHub last commit](https://img.shields.io/github/last-commit/arturbomtempo-learning/software-project-final-work?style=for-the-badge&logo=clockify&color=007ec6)
-![GitHub repo size](https://img.shields.io/github/repo-size/arturbomtempo-learning/software-project-final-work?style=for-the-badge&logo=files&color=007ec6)
 
 ---
 
